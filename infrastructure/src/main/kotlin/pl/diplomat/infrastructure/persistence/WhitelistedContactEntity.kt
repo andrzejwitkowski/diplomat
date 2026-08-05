@@ -8,4 +8,5 @@ data class WhitelistedContactEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val displayName: String,
     val phoneNumber: String,
+    val avatarUri: String? = null,
 )

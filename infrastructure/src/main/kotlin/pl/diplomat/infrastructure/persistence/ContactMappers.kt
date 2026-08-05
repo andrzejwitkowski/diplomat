@@ -8,6 +8,7 @@ internal fun WhitelistedContactEntity.toDomain(): WhitelistedContact =
         id = id,
         displayName = displayName,
         phoneNumber = PhoneNumber(phoneNumber),
+        avatarUri = avatarUri,
     )
 
 internal fun WhitelistedContact.toEntity(): WhitelistedContactEntity =
@@ -15,4 +16,5 @@ internal fun WhitelistedContact.toEntity(): WhitelistedContactEntity =
         id = id,
         displayName = displayName,
         phoneNumber = phoneNumber.value,
+        avatarUri = avatarUri,
     )

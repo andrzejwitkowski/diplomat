@@ -3,8 +3,10 @@ package pl.diplomat.app
 import android.app.Application
 import androidx.room.Room
 import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
+import pl.diplomat.infrastructure.adapter.LocalAvatarStorageAdapter
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.persistence.DiplomatDatabase
+import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetWhitelistedContactsUseCase
@@ -18,9 +20,12 @@ class DiplomatApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db").build()
+        val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
         val repository = RoomContactRepositoryAdapter(database.whitelistedContactDao())
         val systemContacts = AndroidSystemContactsAdapter(contentResolver)
+        val avatarStorage = LocalAvatarStorageAdapter(this)
 
         whitelistViewModel = WhitelistViewModel(
             getWhitelistedContacts = GetWhitelistedContactsUseCase(repository),
@@ -28,6 +33,7 @@ class DiplomatApplication : Application() {
             updateContact = UpdateWhitelistedContactUseCase(repository),
             removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(repository),
             systemContacts = systemContacts,
+            avatarStorage = avatarStorage,
         )
     }
 }

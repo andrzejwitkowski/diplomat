@@ -26,6 +26,7 @@ data class WhitelistedContact(
     val id: Long,
     val displayName: String,
     val phoneNumber: PhoneNumber,
+    val avatarUri: String? = null,
 ) {
     init {
         require(displayName.isNotBlank()) { "Display name cannot be blank" }
