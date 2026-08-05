@@ -1,0 +1,5 @@
+{
+  "name": "diplomat",
+  "user": "ubuntu",
+  "install": "./gradlew --no-daemon assemble testClasses"
+}
