@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ContactRepositoryPort {
     fun observeAll(): Flow<List<WhitelistedContact>>
-    suspend fun add(displayName: String, phoneNumber: PhoneNumber): Long
+    suspend fun add(displayName: String, phoneNumber: PhoneNumber, avatarUri: String? = null): Long
     suspend fun update(contact: WhitelistedContact)
     suspend fun remove(id: Long)
     suspend fun findById(id: Long): WhitelistedContact?

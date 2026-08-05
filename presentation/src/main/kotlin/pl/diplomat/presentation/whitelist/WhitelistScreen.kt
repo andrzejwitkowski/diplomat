@@ -5,7 +5,9 @@ import android.content.Intent
 import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -32,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,9 +46,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.infrastructure.whitelist.EditorState
 import pl.diplomat.infrastructure.whitelist.WhitelistUiState
@@ -68,6 +77,12 @@ fun WhitelistRoute(
         }
     }
 
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent(),
+    ) { uri ->
+        uri?.let { viewModel.setEditorAvatarFromUri(it.toString()) }
+    }
+
     LaunchedEffect(uiState) {
         val message = (uiState as? WhitelistUiState.Content)?.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
@@ -89,6 +104,7 @@ fun WhitelistRoute(
                 Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI),
             )
         },
+        onPickAvatar = { pickImageLauncher.launch("image/*") },
     )
 }
 
@@ -105,6 +121,7 @@ fun WhitelistScreen(
     onDisplayNameChange: (String) -> Unit,
     onPhoneNumberChange: (String) -> Unit,
     onPickFromContacts: () -> Unit,
+    onPickAvatar: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -181,8 +198,48 @@ fun WhitelistScreen(
                         onDisplayNameChange = onDisplayNameChange,
                         onPhoneNumberChange = onPhoneNumberChange,
                         onPickFromContacts = onPickFromContacts,
+                        onPickAvatar = onPickAvatar,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContactAvatar(
+    avatarUri: String?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    val clickableModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else {
+        modifier
+    }
+
+    Surface(
+        modifier = clickableModifier
+            .size(size)
+            .clip(CircleShape),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        if (avatarUri != null) {
+            AsyncImage(
+                model = avatarUri,
+                contentDescription = stringResource(R.string.contact_avatar),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = stringResource(R.string.contact_avatar),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -201,7 +258,7 @@ private fun ContactCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Person, contentDescription = null)
+            ContactAvatar(avatarUri = contact.avatarUri, size = 48.dp)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -228,6 +285,7 @@ private fun ContactEditorDialog(
     onDisplayNameChange: (String) -> Unit,
     onPhoneNumberChange: (String) -> Unit,
     onPickFromContacts: () -> Unit,
+    onPickAvatar: () -> Unit,
 ) {
     val title = if (editor.id == null) {
         stringResource(R.string.add_contact)
@@ -239,7 +297,19 @@ private fun ContactEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                ContactAvatar(
+                    avatarUri = editor.avatarUri,
+                    size = 96.dp,
+                    onClick = onPickAvatar,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.change_avatar),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = editor.displayName,
                     onValueChange = onDisplayNameChange,

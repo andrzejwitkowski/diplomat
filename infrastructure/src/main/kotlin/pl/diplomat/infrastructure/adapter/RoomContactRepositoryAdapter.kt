@@ -16,12 +16,13 @@ class RoomContactRepositoryAdapter(
     override fun observeAll(): Flow<List<WhitelistedContact>> =
         dao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun add(displayName: String, phoneNumber: PhoneNumber): Long =
+    override suspend fun add(displayName: String, phoneNumber: PhoneNumber, avatarUri: String?): Long =
         dao.insert(
             WhitelistedContact(
                 id = 0,
                 displayName = displayName,
                 phoneNumber = phoneNumber,
+                avatarUri = avatarUri,
             ).toEntity(),
         )
 

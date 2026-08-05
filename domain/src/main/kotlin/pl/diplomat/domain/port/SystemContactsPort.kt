@@ -5,6 +5,7 @@ import pl.diplomat.domain.model.PhoneNumber
 data class DeviceContact(
     val displayName: String,
     val phoneNumber: PhoneNumber,
+    val avatarUri: String? = null,
 )
 
 interface SystemContactsPort {

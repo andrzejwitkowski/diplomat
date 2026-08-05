@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.domain.port.AvatarStoragePort
 import pl.diplomat.domain.port.SystemContactsPort
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetWhitelistedContactsUseCase
@@ -33,6 +34,7 @@ data class EditorState(
     val id: Long? = null,
     val displayName: String = "",
     val phoneNumber: String = "",
+    val avatarUri: String? = null,
 )
 
 class WhitelistViewModel(
@@ -41,6 +43,7 @@ class WhitelistViewModel(
     private val updateContact: UpdateWhitelistedContactUseCase,
     private val removeContactFromWhitelist: RemoveContactFromWhitelistUseCase,
     private val systemContacts: SystemContactsPort,
+    private val avatarStorage: AvatarStoragePort,
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<EditorState?>(null)
@@ -66,6 +69,7 @@ class WhitelistViewModel(
             id = contact.id,
             displayName = contact.displayName,
             phoneNumber = contact.phoneNumber.value,
+            avatarUri = contact.avatarUri,
         )
         message.value = null
     }
@@ -88,13 +92,14 @@ class WhitelistViewModel(
             runCatching {
                 val phone = PhoneNumber(current.phoneNumber.trim())
                 if (current.id == null) {
-                    addContact(current.displayName.trim(), phone)
+                    addContact(current.displayName.trim(), phone, current.avatarUri)
                 } else {
                     updateContact(
                         WhitelistedContact(
                             id = current.id,
                             displayName = current.displayName.trim(),
                             phoneNumber = phone,
+                            avatarUri = current.avatarUri,
                         ),
                     )
                 }
@@ -119,13 +124,26 @@ class WhitelistViewModel(
             runCatching {
                 val deviceContact = systemContacts.lookupContact(lookupUri)
                     ?: error("Could not read selected contact")
+                val avatarUri = deviceContact.avatarUri?.let { avatarStorage.saveFromUri(it) }
                 editor.value = EditorState(
                     id = editor.value?.id,
                     displayName = deviceContact.displayName,
                     phoneNumber = deviceContact.phoneNumber.value,
+                    avatarUri = avatarUri,
                 )
             }.onFailure {
                 message.value = it.message ?: "Import failed"
+            }
+        }
+    }
+
+    fun setEditorAvatarFromUri(sourceUri: String) {
+        viewModelScope.launch {
+            runCatching {
+                val localUri = avatarStorage.saveFromUri(sourceUri)
+                editor.update { it?.copy(avatarUri = localUri) }
+            }.onFailure {
+                message.value = it.message ?: "Could not save avatar"
             }
         }
     }
