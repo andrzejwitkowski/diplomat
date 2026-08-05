@@ -1,0 +1,11 @@
+<resources>
+    <!--
+      Base XML theme. The real look & feel is defined in Compose
+      (ui/theme). This only needs to be a no-action-bar theme so the
+      Compose content owns the whole window.
+    -->
+    <style name="Theme.Diplomat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
