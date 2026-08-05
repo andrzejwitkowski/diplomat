@@ -12,8 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import pl.diplomat.presentation.whitelist.WhitelistRoute
 import pl.diplomat.app.ui.theme.DiplomatTheme
+import pl.diplomat.presentation.DiplomatApp
 
 class MainActivity : ComponentActivity() {
 
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
         ensureContactsPermission()
         enableEdgeToEdge()
 
-        val viewModel = (application as DiplomatApplication).whitelistViewModel
+        val application = application as DiplomatApplication
 
         setContent {
             DiplomatTheme {
@@ -34,7 +34,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    WhitelistRoute(viewModel = viewModel)
+                    DiplomatApp(
+                        dashboardViewModel = application.dashboardViewModel,
+                        whitelistViewModel = application.whitelistViewModel,
+                    )
                 }
             }
         }

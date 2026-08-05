@@ -15,6 +15,9 @@ interface WhitelistedContactDao {
     @Query("SELECT * FROM whitelisted_contacts WHERE id = :id")
     suspend fun findById(id: Long): WhitelistedContactEntity?
 
+    @Query("SELECT * FROM whitelisted_contacts")
+    suspend fun getAll(): List<WhitelistedContactEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(entity: WhitelistedContactEntity): Long
 

@@ -14,4 +14,15 @@
     <string name="cancel">Cancel</string>
     <string name="contact_avatar">Contact avatar</string>
     <string name="change_avatar">Tap to change photo</string>
+    <string name="dashboard_title">Conversations</string>
+    <string name="dashboard_loading">Loading conversations…</string>
+    <string name="dashboard_empty">No active conversations yet.</string>
+    <string name="notification_listener_required">Notification access is required to monitor SMS and WhatsApp messages.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="open_whitelist">Manage whitelist</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_ignored">Ignored</string>
+    <string name="status_replied">Replied</string>
+    <string name="conversation_detail_title">Conversation</string>
+    <string name="back">Back</string>
 </resources>

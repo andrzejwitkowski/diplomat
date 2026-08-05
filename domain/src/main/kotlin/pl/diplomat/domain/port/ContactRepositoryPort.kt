@@ -10,4 +10,5 @@ interface ContactRepositoryPort {
     suspend fun update(contact: WhitelistedContact)
     suspend fun remove(id: Long)
     suspend fun findById(id: Long): WhitelistedContact?
+    suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact?
 }
