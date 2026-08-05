@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Diplomat</string>
+    <string name="notification_listener_label">Diplomat notification capture</string>
+
+    <!-- Foreground service -->
+    <string name="fg_channel_name">Background capture</string>
+    <string name="fg_channel_description">Keeps Diplomat listening for new messages.</string>
+    <string name="fg_notification_title">Diplomat is on duty</string>
+    <string name="fg_notification_text">Listening for incoming messages.</string>
+
+    <!-- Decision channel -->
+    <string name="decision_channel_name">Decisions required</string>
+    <string name="decision_channel_description">A captured message is waiting for your decision.</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Diplomat</string>
+    <string name="dashboard_empty">No captured conversations yet.</string>
+    <string name="permission_banner_title">Notification access required</string>
+    <string name="permission_banner_text">Grant notification access so Diplomat can capture messages.</string>
+    <string name="permission_banner_action">Open settings</string>
+    <string name="battery_banner_text">Disable battery optimization to keep capture reliable.</string>
+    <string name="battery_banner_action">Fix</string>
+
+    <!-- Decision screen -->
+    <string name="decision_title">Decision</string>
+    <string name="decision_incoming">Incoming message</string>
+    <string name="decision_tone">Detected tone</string>
+    <string name="decision_tone_pending">Not analyzed yet</string>
+    <string name="decision_agreement">Do you agree with the request?</string>
+    <string name="decision_reasoning_label">Your reasoning</string>
+    <string name="decision_generate">Generate / refine reply</string>
+    <string name="decision_draft_label">Suggested reply (editable)</string>
+    <string name="decision_send">Approve &amp; send</string>
+    <string name="decision_ignore">Ignore (acknowledge)</string>
+</resources>
