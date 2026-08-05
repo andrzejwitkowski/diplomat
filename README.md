@@ -28,7 +28,12 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## CI
 
-Pushes to `main` trigger `.github/workflows/build_apk.yml`, which builds the debug APK and uploads it as a GitHub Actions artifact.
+| Workflow | Trigger | Output |
+|----------|---------|--------|
+| `build_apk.yml` | push to `main` | Debug APK artifact |
+| `release.yml` | push to `main` | Semver git tag (`v{versionName}`) + GitHub Release with APK |
+
+Bump `versionName` in `app/build.gradle.kts` before merging to `main` to publish a new release. The release workflow skips if the tag already exists.
 
 ## Engineering principles
 
