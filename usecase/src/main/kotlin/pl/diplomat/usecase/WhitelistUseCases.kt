@@ -14,8 +14,11 @@ class GetWhitelistedContactsUseCase(
 class AddContactToWhitelistUseCase(
     private val repository: ContactRepositoryPort,
 ) {
-    suspend operator fun invoke(displayName: String, phoneNumber: PhoneNumber): Long =
-        repository.add(displayName.trim(), phoneNumber)
+    suspend operator fun invoke(displayName: String, phoneNumber: PhoneNumber): Long {
+        val trimmedDisplayName = displayName.trim()
+        require(trimmedDisplayName.isNotBlank()) { "Display name cannot be blank" }
+        return repository.add(trimmedDisplayName, phoneNumber)
+    }
 }
 
 class UpdateWhitelistedContactUseCase(

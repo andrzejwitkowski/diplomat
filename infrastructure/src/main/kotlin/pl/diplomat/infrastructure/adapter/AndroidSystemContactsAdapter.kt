@@ -15,46 +15,20 @@ class AndroidSystemContactsAdapter(
 
     override suspend fun lookupContact(lookupUri: String): DeviceContact? = withContext(Dispatchers.IO) {
         val uri = Uri.parse(lookupUri)
-        val contactId = resolveContactId(uri) ?: return@withContext null
-        val displayName = resolveDisplayName(contactId) ?: return@withContext null
-        val phoneNumber = resolvePhoneNumber(contactId) ?: return@withContext null
-        DeviceContact(displayName = displayName, phoneNumber = PhoneNumber(phoneNumber))
-    }
-
-    private fun resolveContactId(uri: Uri): String? {
-        contentResolver.query(uri, arrayOf(ContactsContract.Contacts._ID), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                return cursor.getString(0)
-            }
-        }
-        return null
-    }
-
-    private fun resolveDisplayName(contactId: String): String? {
-        val uri = ContactsContract.Contacts.CONTENT_URI
         contentResolver.query(
             uri,
-            arrayOf(ContactsContract.Contacts.DISPLAY_NAME),
-            "${ContactsContract.Contacts._ID} = ?",
-            arrayOf(contactId),
+            arrayOf(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ),
+            null,
+            null,
             null,
         )?.use { cursor ->
-            if (cursor.moveToFirst()) return cursor.getString(0)
+            if (!cursor.moveToFirst()) return@withContext null
+            val displayName = cursor.getString(0) ?: return@withContext null
+            val phoneNumber = cursor.getString(1) ?: return@withContext null
+            DeviceContact(displayName = displayName, phoneNumber = PhoneNumber(phoneNumber))
         }
-        return null
-    }
-
-    private fun resolvePhoneNumber(contactId: String): String? {
-        val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-        contentResolver.query(
-            uri,
-            arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
-            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
-            arrayOf(contactId),
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) return cursor.getString(0)
-        }
-        return null
     }
 }

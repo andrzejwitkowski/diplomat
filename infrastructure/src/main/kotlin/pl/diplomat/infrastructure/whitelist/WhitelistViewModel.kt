@@ -39,7 +39,7 @@ class WhitelistViewModel(
     getWhitelistedContacts: GetWhitelistedContactsUseCase,
     private val addContact: AddContactToWhitelistUseCase,
     private val updateContact: UpdateWhitelistedContactUseCase,
-    private val removeContact: RemoveContactFromWhitelistUseCase,
+    private val removeContactFromWhitelist: RemoveContactFromWhitelistUseCase,
     private val systemContacts: SystemContactsPort,
 ) : ViewModel() {
 
@@ -109,7 +109,7 @@ class WhitelistViewModel(
 
     fun removeContact(id: Long) {
         viewModelScope.launch {
-            runCatching { removeContact(id) }
+            runCatching { removeContactFromWhitelist(id) }
                 .onFailure { message.value = it.message ?: "Delete failed" }
         }
     }

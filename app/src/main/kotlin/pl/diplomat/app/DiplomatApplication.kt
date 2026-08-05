@@ -26,7 +26,7 @@ class DiplomatApplication : Application() {
             getWhitelistedContacts = GetWhitelistedContactsUseCase(repository),
             addContact = AddContactToWhitelistUseCase(repository),
             updateContact = UpdateWhitelistedContactUseCase(repository),
-            removeContact = RemoveContactFromWhitelistUseCase(repository),
+            removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(repository),
             systemContacts = systemContacts,
         )
     }

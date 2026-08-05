@@ -7,6 +7,16 @@ value class PhoneNumber(val value: String) {
         require(value.all { it.isDigit() || it == '+' || it == ' ' || it == '-' || it == '(' || it == ')' }) {
             "Phone number contains invalid characters"
         }
+        val normalizedValue = normalized()
+        require(normalizedValue.any { it.isDigit() }) {
+            "Phone number must contain a digit"
+        }
+        require(
+            normalizedValue.count { it == '+' } <= 1 &&
+                (normalizedValue.indexOf('+') == -1 || normalizedValue.startsWith("+")),
+        ) {
+            "Phone number has an invalid '+' position"
+        }
     }
 
     fun normalized(): String = value.filter { it.isDigit() || it == '+' }

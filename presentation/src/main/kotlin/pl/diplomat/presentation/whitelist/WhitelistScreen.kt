@@ -86,7 +86,7 @@ fun WhitelistRoute(
         onPhoneNumberChange = viewModel::updateEditorPhoneNumber,
         onPickFromContacts = {
             pickContactLauncher.launch(
-                Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI),
+                Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI),
             )
         },
     )
