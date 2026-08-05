@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Diplomat</string>
+    <string name="whitelist_title">Contact Whitelist</string>
+    <string name="loading">Loading…</string>
+    <string name="empty_whitelist">No whitelisted contacts yet. Tap + to add one.</string>
+    <string name="add_contact">Add contact</string>
+    <string name="edit_contact">Edit contact</string>
+    <string name="delete_contact">Delete contact</string>
+    <string name="display_name">Display name</string>
+    <string name="phone_number">Phone number</string>
+    <string name="pick_from_contacts">Pick from contacts</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+</resources>
