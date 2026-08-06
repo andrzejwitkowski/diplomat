@@ -5,7 +5,7 @@ import pl.diplomat.domain.model.IncomingMessage
 import pl.diplomat.domain.port.MessageRepositoryPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 
 class InMemoryMessageRepository(
@@ -21,12 +21,18 @@ class InMemoryMessageRepository(
         return id
     }
 
+    override suspend fun existsByNotificationKey(notificationKey: String): Boolean =
+        messages.value.any { it.notificationKey == notificationKey }
+
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
-        messages.map { all ->
+        combine(contactRepository.observeAll(), messages) { contacts, all ->
+            val contactsById = contacts.associateBy { it.id }
             all.groupBy { it.contactId }
                 .mapNotNull { (contactId, threadMessages) ->
-                    val contact = contactRepository.findById(contactId) ?: return@mapNotNull null
-                    val lastMessage = threadMessages.maxBy { it.timestamp }
+                    val contact = contactsById[contactId] ?: return@mapNotNull null
+                    val lastMessage = threadMessages.maxWith(
+                        compareBy<IncomingMessage> { it.timestamp }.thenBy { it.id },
+                    )
                     ConversationThread(contact, lastMessage)
                 }
                 .sortedByDescending { it.lastMessage.timestamp }
@@ -34,7 +40,7 @@ class InMemoryMessageRepository(
 
     override suspend fun findMessagesByContactId(contactId: Long): List<IncomingMessage> =
         messages.value.filter { it.contactId == contactId }
-            .sortedByDescending { it.timestamp }
+            .sortedWith(compareByDescending<IncomingMessage> { it.timestamp }.thenByDescending { it.id })
 
     fun snapshot(): List<IncomingMessage> = messages.value
 }

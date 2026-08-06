@@ -18,6 +18,7 @@ data class IncomingMessage(
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
     val status: MessageStatus,
+    val notificationKey: String? = null,
 ) {
     init {
         require(contactId > 0) { "Contact id must be positive" }

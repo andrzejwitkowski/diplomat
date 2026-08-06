@@ -15,6 +15,10 @@ class ProcessResultAssertion private constructor(
         assertEquals(ProcessIncomingMessageResult.RejectedNotWhitelisted, actual)
     }
 
+    fun isIgnoredDuplicate(): ProcessResultAssertion = apply {
+        assertEquals(ProcessIncomingMessageResult.IgnoredDuplicate, actual)
+    }
+
     fun isSaved(
         block: MessageAssertion.() -> Unit = {},
     ): ProcessResultAssertion = apply {

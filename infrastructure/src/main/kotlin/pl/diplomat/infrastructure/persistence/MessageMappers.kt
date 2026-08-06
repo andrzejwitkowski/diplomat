@@ -15,6 +15,7 @@ internal fun IncomingMessageEntity.toDomain(): IncomingMessage =
         timestamp = timestamp,
         sourceApp = MessageSourceApp.valueOf(sourceApp),
         status = MessageStatus.valueOf(status),
+        notificationKey = notificationKey,
     )
 
 internal fun IncomingMessage.toEntity(): IncomingMessageEntity {
@@ -28,6 +29,7 @@ internal fun IncomingMessage.toEntity(): IncomingMessageEntity {
         timestamp = timestamp,
         sourceApp = sourceApp.name,
         status = status.name,
+        notificationKey = notificationKey,
     )
 }
 

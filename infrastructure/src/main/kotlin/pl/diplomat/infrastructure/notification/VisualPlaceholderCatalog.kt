@@ -16,15 +16,14 @@ class VisualPlaceholderCatalog private constructor(
         val normalized = text.trim().lowercase()
         if (normalized.isBlank()) return null
         return byKind.entries.firstOrNull { (_, labels) ->
-            labels.any { label -> normalized == label || normalized.endsWith(" $label") }
+            labels.any { label -> normalized == label }
         }?.key
     }
 
     fun isPlaceholderOnly(text: String, kind: VisualMediaKind): Boolean {
         val normalized = text.trim().lowercase()
         if (normalized.isBlank()) return true
-        val labels = labelsFor(kind)
-        return labels.any { label -> normalized == label || normalized.endsWith(" $label") }
+        return labelsFor(kind).contains(normalized)
     }
 
     companion object {

@@ -2,14 +2,13 @@ package pl.diplomat.infrastructure.adapter
 
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
-import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.port.MessageRepositoryPort
 import pl.diplomat.infrastructure.persistence.IncomingMessageDao
 import pl.diplomat.infrastructure.persistence.WhitelistedContactDao
 import pl.diplomat.infrastructure.persistence.toDomain
 import pl.diplomat.infrastructure.persistence.toEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
 class RoomMessageRepositoryAdapter(
     private val messageDao: IncomingMessageDao,
@@ -19,10 +18,17 @@ class RoomMessageRepositoryAdapter(
     override suspend fun save(message: IncomingMessage): Long =
         messageDao.insert(message.toEntity())
 
+    override suspend fun existsByNotificationKey(notificationKey: String): Boolean =
+        messageDao.existsByNotificationKey(notificationKey)
+
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
-        messageDao.observeLatestPerContact().map { messages ->
+        combine(
+            messageDao.observeLatestPerContact(),
+            contactDao.observeAll(),
+        ) { messages, contacts ->
+            val contactsById = contacts.associate { it.id to it.toDomain() }
             messages.mapNotNull { entity ->
-                val contact = contactDao.findById(entity.contactId)?.toDomain() ?: return@mapNotNull null
+                val contact = contactsById[entity.contactId] ?: return@mapNotNull null
                 ConversationThread(
                     contact = contact,
                     lastMessage = entity.toDomain(),

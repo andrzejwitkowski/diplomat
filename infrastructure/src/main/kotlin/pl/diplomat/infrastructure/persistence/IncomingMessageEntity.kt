@@ -15,7 +15,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("contactId"), Index("timestamp")],
+    indices = [
+        Index("contactId"),
+        Index("timestamp"),
+        Index(value = ["notificationKey"], unique = true),
+    ],
 )
 data class IncomingMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -26,4 +30,5 @@ data class IncomingMessageEntity(
     val timestamp: Long,
     val sourceApp: String,
     val status: String,
+    val notificationKey: String? = null,
 )

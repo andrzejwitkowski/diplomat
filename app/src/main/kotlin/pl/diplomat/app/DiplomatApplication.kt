@@ -2,6 +2,9 @@ package pl.diplomat.app
 
 import android.app.Application
 import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import pl.diplomat.infrastructure.DiplomatServiceLocator
 import pl.diplomat.infrastructure.notification.NotificationParser
 import pl.diplomat.infrastructure.notification.VisualPlaceholderCatalog
@@ -15,6 +18,7 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
 import pl.diplomat.infrastructure.persistence.MIGRATION_2_3
 import pl.diplomat.infrastructure.persistence.MIGRATION_3_4
 import pl.diplomat.infrastructure.persistence.MIGRATION_4_5
+import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -26,6 +30,11 @@ import pl.diplomat.usecase.RemoveContactFromWhitelistUseCase
 import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
 
 class DiplomatApplication : Application(), DiplomatServiceLocator {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override val applicationScope: CoroutineScope
+        get() = appScope
 
     override lateinit var notificationParser: NotificationParser
         private set
@@ -43,7 +52,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
 
         val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao())

@@ -1,5 +1,6 @@
 package pl.diplomat.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,17 @@ fun DiplomatApp(
     whitelistViewModel: WhitelistViewModel,
 ) {
     var destination by remember { mutableStateOf<DiplomatDestination>(DiplomatDestination.Dashboard) }
+
+    BackHandler(enabled = destination != DiplomatDestination.Dashboard) {
+        when (val current = destination) {
+            DiplomatDestination.Whitelist -> destination = DiplomatDestination.Dashboard
+            is DiplomatDestination.ConversationDetail -> {
+                dashboardViewModel.clearSelectedThread()
+                destination = DiplomatDestination.Dashboard
+            }
+            DiplomatDestination.Dashboard -> Unit
+        }
+    }
 
     when (val current = destination) {
         DiplomatDestination.Dashboard -> {

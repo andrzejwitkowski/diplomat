@@ -15,8 +15,12 @@ object NotificationTestConstants {
     const val NOTIFICATION_TEXT_STICKER = "Sticker"
     const val NOTIFICATION_TEXT_VIDEO = "Video"
     const val NOTIFICATION_TEXT_IGNORED = "Ignored"
+    const val NOTIFICATION_TEXT_EMOJI_CAPTION = "📷 Meet at noon"
+    const val NOTIFICATION_TEXT_GIFT = "I received a gift"
+    const val NOTIFICATION_TEXT_SENT_PHOTO = "I sent a photo"
 
-    const val TIMESTAMP_SMS = 1_000L
+    const val DEFAULT_NOTIFICATION_KEY = "test-notification-key"
+    const val TIMESTAMP_SMS = 1_500L
     const val TIMESTAMP_WHATSAPP = 2_000L
     const val TIMESTAMP_PHOTO = 2_500L
     const val TIMESTAMP_GIF = 2_550L

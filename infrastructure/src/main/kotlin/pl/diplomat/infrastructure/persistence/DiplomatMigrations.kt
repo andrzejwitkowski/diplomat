@@ -44,3 +44,13 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         )
     }
 }
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE incoming_messages ADD COLUMN notificationKey TEXT")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_incoming_messages_notificationKey " +
+                "ON incoming_messages(notificationKey)",
+        )
+    }
+}

@@ -1,5 +1,6 @@
 package pl.diplomat.infrastructure.notification
 
+import android.os.Bundle
 import org.junit.Test
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
@@ -14,7 +15,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesSmsNotification() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.SMS_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.SMS_SENDER)
@@ -31,7 +32,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesWhatsAppNotification() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -50,7 +51,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesPolishPhotoPlaceholderFromLocalizedResources() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -67,7 +68,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesPhotoNotificationFromPlaceholderText() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -84,7 +85,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesGifNotificationFromPlaceholderText() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -101,7 +102,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesGifNotificationFromEmojiPrefix() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -118,7 +119,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesStickerNotification() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -135,7 +136,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesVideoNotification() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -152,7 +153,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesImageWithCaptionNotification() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -172,7 +173,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesImageOnlyNotificationFromPictureExtra() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.SMS_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.SMS_SENDER)
@@ -188,7 +189,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun ignoresUnsupportedPackage() {
-        val parsed = notificationParser.parse(
+        val parsed = parseNotification(
             packageName = NotificationTestConstants.UNKNOWN_PACKAGE,
             extras = notificationExtras()
                 .withText(NotificationTestConstants.NOTIFICATION_TEXT_IGNORED)
@@ -197,5 +198,56 @@ class NotificationParserTest : BaseSpec() {
         )
 
         ParsedNotificationAssertion.assertThat(parsed).isNull()
+    }
+
+    @Test
+    fun keepsEmojiPrefixedCaptionAsText() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_EMOJI_CAPTION)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_PHOTO,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasContent(MessageContent.TextOnly(NotificationTestConstants.NOTIFICATION_TEXT_EMOJI_CAPTION))
+    }
+
+    @Test
+    fun doesNotTreatGiftTextAsGifPlaceholder() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_GIFT)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_GIF,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasContent(MessageContent.TextOnly(NotificationTestConstants.NOTIFICATION_TEXT_GIFT))
+    }
+
+    @Test
+    fun doesNotTreatSentPhotoPhraseAsVisualPlaceholder() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_SENT_PHOTO)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_PHOTO,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasContent(MessageContent.TextOnly(NotificationTestConstants.NOTIFICATION_TEXT_SENT_PHOTO))
     }
 }

@@ -10,6 +10,7 @@ class RawIncomingMessageBuilder {
     private var content: MessageContent = MessageContent.TextOnly(TestConstants.TEXT_HELLO)
     private var timestamp: Long = TestConstants.TIMESTAMP_1
     private var sourceApp: MessageSourceApp = MessageSourceApp.SMS
+    private var notificationKey: String? = null
 
     fun withSenderPhone(value: String) = apply { senderPhone = value }
 
@@ -21,11 +22,14 @@ class RawIncomingMessageBuilder {
 
     fun withSourceApp(value: MessageSourceApp) = apply { sourceApp = value }
 
+    fun withNotificationKey(value: String?) = apply { notificationKey = value }
+
     fun build(): RawIncomingMessage = RawIncomingMessage(
         senderPhone = senderPhone,
         content = content,
         timestamp = timestamp,
         sourceApp = sourceApp,
+        notificationKey = notificationKey,
     )
 }
 

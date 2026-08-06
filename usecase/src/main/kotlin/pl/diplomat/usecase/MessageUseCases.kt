@@ -16,11 +16,13 @@ data class RawIncomingMessage(
     val content: MessageContent,
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
+    val notificationKey: String? = null,
 )
 
 sealed class ProcessIncomingMessageResult {
     data class Saved(val message: IncomingMessage) : ProcessIncomingMessageResult()
     data object RejectedNotWhitelisted : ProcessIncomingMessageResult()
+    data object IgnoredDuplicate : ProcessIncomingMessageResult()
 }
 
 class ProcessIncomingMessageUseCase(
@@ -33,6 +35,12 @@ class ProcessIncomingMessageUseCase(
 
         val contact = contactRepository.findByPhoneNumber(phoneNumber)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
+
+        raw.notificationKey?.let { key ->
+            if (messageRepository.existsByNotificationKey(key)) {
+                return ProcessIncomingMessageResult.IgnoredDuplicate
+            }
+        }
 
         val status = when (val content = raw.content) {
             is MessageContent.VisualOnly -> MessageStatus.PENDING
@@ -47,6 +55,7 @@ class ProcessIncomingMessageUseCase(
             timestamp = raw.timestamp,
             sourceApp = raw.sourceApp,
             status = status,
+            notificationKey = raw.notificationKey,
         )
 
         val id = messageRepository.save(message)

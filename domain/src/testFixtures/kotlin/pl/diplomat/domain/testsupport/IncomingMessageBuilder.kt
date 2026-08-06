@@ -13,6 +13,7 @@ class IncomingMessageBuilder {
     private var timestamp: Long = TestConstants.TIMESTAMP_1
     private var sourceApp: MessageSourceApp = MessageSourceApp.SMS
     private var status: MessageStatus = MessageStatus.PENDING
+    private var notificationKey: String? = null
 
     fun withId(value: Long) = apply { id = value }
 
@@ -34,6 +35,8 @@ class IncomingMessageBuilder {
 
     fun withStatus(value: MessageStatus) = apply { status = value }
 
+    fun withNotificationKey(value: String?) = apply { notificationKey = value }
+
     fun build(): IncomingMessage = IncomingMessage(
         id = id,
         contactId = contactId,
@@ -41,6 +44,7 @@ class IncomingMessageBuilder {
         timestamp = timestamp,
         sourceApp = sourceApp,
         status = status,
+        notificationKey = notificationKey,
     )
 }
 

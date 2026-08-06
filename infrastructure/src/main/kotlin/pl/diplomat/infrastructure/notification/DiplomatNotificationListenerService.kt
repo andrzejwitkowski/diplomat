@@ -2,17 +2,10 @@ package pl.diplomat.infrastructure.notification
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import pl.diplomat.infrastructure.DiplomatServiceLocator
-import pl.diplomat.usecase.ProcessIncomingMessageResult
 
 class DiplomatNotificationListenerService : NotificationListenerService() {
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
@@ -23,18 +16,12 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
             packageName = packageName,
             extras = sbn.notification.extras,
             postedAtMillis = sbn.postTime,
+            notificationKey = sbn.key,
         ) ?: return
 
-        serviceScope.launch {
-            when (locator.processIncomingMessage(locator.notificationParser.toRaw(parsed))) {
-                is ProcessIncomingMessageResult.Saved -> Unit
-                ProcessIncomingMessageResult.RejectedNotWhitelisted -> Unit
-            }
+        val raw = locator.notificationParser.toRaw(parsed)
+        locator.applicationScope.launch {
+            locator.processIncomingMessage(raw)
         }
-    }
-
-    override fun onDestroy() {
-        serviceScope.cancel()
-        super.onDestroy()
     }
 }

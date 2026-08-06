@@ -132,4 +132,31 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
 
         ProcessResultAssertion.assertThat(result).isRejectedNotWhitelisted()
     }
+
+    @Test
+    fun `ignores duplicate notification key`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val notificationKey = "notification-key-1"
+
+        useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_HELLO)
+                .withTimestamp(TestConstants.TIMESTAMP_1)
+                .withNotificationKey(notificationKey)
+                .build(),
+        )
+
+        val duplicate = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withNotificationKey(notificationKey)
+                .build(),
+        )
+
+        ProcessResultAssertion.assertThat(duplicate).isIgnoredDuplicate()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
+    }
 }

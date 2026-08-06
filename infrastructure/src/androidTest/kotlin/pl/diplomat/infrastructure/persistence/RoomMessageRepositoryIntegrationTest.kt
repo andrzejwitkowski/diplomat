@@ -3,6 +3,7 @@ package pl.diplomat.infrastructure.persistence
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageContentType
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
@@ -121,5 +122,57 @@ class RoomMessageRepositoryIntegrationTest : BaseRoomIntegrationSpec() {
                 hasVisualKind(VisualMediaKind.GIF)
                 hasContent(MessageContent.VisualWithText(VisualMediaKind.GIF, TestConstants.TEXT_NEWER))
             }
+    }
+
+    @Test
+    fun observeLatestPerContactReturnsOneMessageWhenTimestampsTie() = runTest {
+        val contactId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val sharedTimestamp = TestConstants.TIMESTAMP_300
+
+        messageRepository.save(
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withText(TestConstants.TEXT_OLDER)
+                .withTimestamp(sharedTimestamp)
+                .build(),
+        )
+        messageRepository.save(
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withText(TestConstants.TEXT_NEWER)
+                .withTimestamp(sharedTimestamp)
+                .build(),
+        )
+
+        val conversations = messageRepository.observeActiveConversations().first()
+
+        ConversationRepositoryAssertion.assertThat(conversations)
+            .hasSize(1)
+            .first { hasTextBody(TestConstants.TEXT_NEWER) }
+    }
+
+    @Test
+    fun observeActiveConversationsReflectsContactRename() = runTest {
+        val contactId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        messageRepository.save(
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withText(TestConstants.TEXT_HELLO_DIPLOMAT)
+                .withTimestamp(TestConstants.TIMESTAMP_ROOM)
+                .build(),
+        )
+
+        val renamedContact = aWhitelistedContact()
+            .withId(contactId)
+            .withDisplayName(TestConstants.BOB_NAME)
+            .withPhoneNumber(TestConstants.ALICE_PHONE_FORMATTED)
+            .build()
+        contactRepository.update(renamedContact)
+
+        val conversations = messageRepository.observeActiveConversations().first()
+
+        ConversationRepositoryAssertion.assertThat(conversations)
+            .hasSize(1)
+            .firstContactHasDisplayName(TestConstants.BOB_NAME)
     }
 }

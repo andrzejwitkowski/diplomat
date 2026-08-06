@@ -11,12 +11,13 @@ data class ParsedNotification(
     val content: MessageContent,
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
+    val notificationKey: String,
 )
 
 class NotificationParser(
     private val placeholders: VisualPlaceholderCatalog,
 ) {
-    fun parse(packageName: String, extras: Bundle, postedAtMillis: Long): ParsedNotification? {
+    fun parse(packageName: String, extras: Bundle, postedAtMillis: Long, notificationKey: String): ParsedNotification? {
         val sourceApp = resolveSourceApp(packageName) ?: return null
         val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
         val text = extractNotificationText(extras)
@@ -35,6 +36,7 @@ class NotificationParser(
             content = content,
             timestamp = postedAtMillis,
             sourceApp = sourceApp,
+            notificationKey = notificationKey,
         )
     }
 
@@ -42,14 +44,16 @@ class NotificationParser(
         val trimmedText = text.trim()
         val hasPicture = hasPictureAttachment(extras)
         val emojiKind = emojiPrefixKind(trimmedText.lowercase())
-        val placeholderKind = emojiKind ?: placeholders.detectKind(trimmedText)
+        val placeholderKind = when {
+            emojiKind != null && isPlaceholderOnly(trimmedText, emojiKind) -> emojiKind
+            else -> placeholders.detectKind(trimmedText)
+        }
 
         return when {
             hasPicture && trimmedText.isBlank() -> MessageContent.VisualOnly(VisualMediaKind.PHOTO)
             placeholderKind != null && isPlaceholderOnly(trimmedText, placeholderKind) ->
                 MessageContent.VisualOnly(placeholderKind)
             hasPicture -> MessageContent.VisualWithText(VisualMediaKind.PHOTO, trimmedText)
-            placeholderKind != null -> MessageContent.VisualOnly(placeholderKind)
             trimmedText.isNotBlank() -> MessageContent.TextOnly(trimmedText)
             else -> null
         }
@@ -58,14 +62,26 @@ class NotificationParser(
     private fun isPlaceholderOnly(text: String, kind: VisualMediaKind): Boolean {
         val normalized = text.trim().lowercase()
         if (normalized.isBlank()) return true
-        emojiPrefixKind(normalized)?.let { return it == kind }
+        emojiPrefixKind(normalized)?.let { emojiKind ->
+            if (emojiKind != kind) return false
+            val remainder = stripKnownEmojiPrefix(normalized)
+            return remainder.isBlank() || placeholders.isPlaceholderOnly(remainder, kind)
+        }
         return placeholders.isPlaceholderOnly(text, kind)
     }
+
+    private fun stripKnownEmojiPrefix(normalized: String): String =
+        normalized
+            .removePrefix("📷")
+            .removePrefix("🖼")
+            .removePrefix("🎬")
+            .removePrefix("🎞")
+            .removePrefix("🎥")
+            .trim()
 
     private fun emojiPrefixKind(normalized: String): VisualMediaKind? = when {
         normalized.startsWith("📷") || normalized.startsWith("🖼") -> VisualMediaKind.PHOTO
         normalized.startsWith("🎬") || normalized.startsWith("🎞") -> VisualMediaKind.GIF
-        normalized.contains("gif") -> VisualMediaKind.GIF
         normalized.startsWith("🎥") -> VisualMediaKind.VIDEO
         else -> null
     }
@@ -76,6 +92,7 @@ class NotificationParser(
             content = parsed.content,
             timestamp = parsed.timestamp,
             sourceApp = parsed.sourceApp,
+            notificationKey = parsed.notificationKey,
         )
 
     companion object {
