@@ -83,3 +83,35 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         )
     }
 }
+
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE whitelisted_contacts ADD COLUMN phoneMatchKey TEXT NOT NULL DEFAULT ''",
+        )
+        db.query("SELECT id, phoneNumber FROM whitelisted_contacts").use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                val digits = cursor.getString(1).filter { it.isDigit() }
+                val matchKey = if (digits.length >= 9) digits.takeLast(9) else digits
+                db.execSQL(
+                    "UPDATE whitelisted_contacts SET phoneMatchKey = ? WHERE id = ?",
+                    arrayOf(matchKey, id),
+                )
+            }
+        }
+        db.execSQL("DROP INDEX IF EXISTS index_whitelisted_contacts_normalizedPhoneNumber")
+        db.execSQL(
+            """
+            DELETE FROM whitelisted_contacts
+            WHERE id NOT IN (
+                SELECT MIN(id) FROM whitelisted_contacts GROUP BY phoneMatchKey
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_whitelisted_contacts_phoneMatchKey " +
+                "ON whitelisted_contacts(phoneMatchKey)",
+        )
+    }
+}

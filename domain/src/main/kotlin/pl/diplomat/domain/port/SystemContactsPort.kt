@@ -10,4 +10,6 @@ data class DeviceContact(
 
 interface SystemContactsPort {
     suspend fun lookupContact(lookupUri: String): DeviceContact?
+
+    suspend fun findPhoneNumbersByDisplayName(displayName: String): List<PhoneNumber>
 }

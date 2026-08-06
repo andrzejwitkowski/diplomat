@@ -2,6 +2,8 @@ package pl.diplomat.infrastructure.adapter
 
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.domain.model.matchKey
+import pl.diplomat.domain.model.normalizeDisplayName
 import pl.diplomat.domain.port.ContactRepositoryPort
 import pl.diplomat.infrastructure.persistence.WhitelistedContactDao
 import pl.diplomat.infrastructure.persistence.toDomain
@@ -20,7 +22,7 @@ class RoomContactRepositoryAdapter(
         dao.insert(
             WhitelistedContact(
                 id = 0,
-                displayName = displayName.trim(),
+                displayName = displayName.normalizeDisplayName(),
                 phoneNumber = phoneNumber,
                 avatarUri = avatarUri,
             ).toEntity(),
@@ -38,8 +40,8 @@ class RoomContactRepositoryAdapter(
         dao.findById(id)?.toDomain()
 
     override suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact? =
-        dao.findByNormalizedPhoneNumber(phoneNumber.normalized())?.toDomain()
+        dao.findByPhoneMatchKey(phoneNumber.matchKey())?.toDomain()
 
     override suspend fun findByDisplayName(displayName: String): WhitelistedContact? =
-        dao.findByDisplayName(displayName.trim())?.toDomain()
+        dao.findByDisplayName(displayName.normalizeDisplayName())?.toDomain()
 }

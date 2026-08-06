@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "whitelisted_contacts",
     indices = [
-        Index(value = ["normalizedPhoneNumber"], unique = true),
+        Index(value = ["phoneMatchKey"], unique = true),
     ],
 )
 data class WhitelistedContactEntity(
@@ -15,5 +15,6 @@ data class WhitelistedContactEntity(
     val displayName: String,
     val phoneNumber: String,
     val normalizedPhoneNumber: String,
+    val phoneMatchKey: String,
     val avatarUri: String? = null,
 )

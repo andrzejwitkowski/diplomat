@@ -22,6 +22,7 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_3_4
 import pl.diplomat.infrastructure.persistence.MIGRATION_4_5
 import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.persistence.MIGRATION_6_7
+import pl.diplomat.infrastructure.persistence.MIGRATION_7_8
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -68,7 +69,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         incomingMessageNotifier = IncomingMessageNotifier(this)
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
 
         val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao())
@@ -80,7 +81,11 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         val systemContacts = AndroidSystemContactsAdapter(contentResolver)
         val avatarStorage = LocalAvatarStorageAdapter(this)
 
-        processIncomingMessage = ProcessIncomingMessageUseCase(contactRepository, messageRepository)
+        processIncomingMessage = ProcessIncomingMessageUseCase(
+            contactRepository,
+            messageRepository,
+            systemContacts,
+        )
 
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),

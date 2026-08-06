@@ -10,6 +10,7 @@ import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.domain.model.bodyText
 import pl.diplomat.domain.port.ContactRepositoryPort
 import pl.diplomat.domain.port.MessageRepositoryPort
+import pl.diplomat.domain.port.SystemContactsPort
 import kotlinx.coroutines.flow.Flow
 
 data class RawIncomingMessage(
@@ -29,9 +30,10 @@ sealed class ProcessIncomingMessageResult {
 class ProcessIncomingMessageUseCase(
     private val contactRepository: ContactRepositoryPort,
     private val messageRepository: MessageRepositoryPort,
+    private val systemContacts: SystemContactsPort,
 ) {
     suspend operator fun invoke(raw: RawIncomingMessage): ProcessIncomingMessageResult {
-        val contact = resolveContact(raw.senderPhone, raw.sourceApp)
+        val contact = resolveContact(raw.senderPhone)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
         val status = when (val content = raw.content) {
@@ -55,7 +57,7 @@ class ProcessIncomingMessageUseCase(
         return ProcessIncomingMessageResult.Saved(message.copy(id = id), contact)
     }
 
-    private suspend fun resolveContact(sender: String, sourceApp: MessageSourceApp): WhitelistedContact? {
+    private suspend fun resolveContact(sender: String): WhitelistedContact? {
         val trimmed = sender.trim()
         if (trimmed.isBlank()) return null
 
@@ -63,8 +65,12 @@ class ProcessIncomingMessageUseCase(
             ?.let { contactRepository.findByPhoneNumber(it) }
             ?.let { return it }
 
-        if (sourceApp != MessageSourceApp.WHATSAPP) return null
-        return contactRepository.findByDisplayName(trimmed)
+        contactRepository.findByDisplayName(trimmed)?.let { return it }
+
+        for (phone in systemContacts.findPhoneNumbersByDisplayName(trimmed)) {
+            contactRepository.findByPhoneNumber(phone)?.let { return it }
+        }
+        return null
     }
 
     private fun classifyText(text: String): MessageStatus =
