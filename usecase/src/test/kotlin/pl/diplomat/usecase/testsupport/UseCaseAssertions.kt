@@ -24,6 +24,7 @@ class ProcessResultAssertion private constructor(
     ): ProcessResultAssertion = apply {
         val saved = actual as? ProcessIncomingMessageResult.Saved
             ?: error("Expected Saved but was $actual")
+        assertEquals(saved.contact.id, saved.message.contactId)
         MessageAssertion.assertThat(saved.message).block()
     }
 

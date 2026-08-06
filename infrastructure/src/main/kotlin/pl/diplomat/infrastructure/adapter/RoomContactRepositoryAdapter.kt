@@ -20,7 +20,7 @@ class RoomContactRepositoryAdapter(
         dao.insert(
             WhitelistedContact(
                 id = 0,
-                displayName = displayName,
+                displayName = displayName.trim(),
                 phoneNumber = phoneNumber,
                 avatarUri = avatarUri,
             ).toEntity(),

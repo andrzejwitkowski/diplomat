@@ -20,19 +20,15 @@ android {
         versionCode = 2
         versionName = "1.1.0"
 
-        val gitHash = providers.exec {
-            commandLine("git", "rev-parse", "--short", "HEAD")
-            isIgnoreExitValue = true
-        }.standardOutput.asText.map { it.trim().ifBlank { "unknown" } }.get()
-
-        val buildTime = providers.provider {
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }.format(Date())
-        }.get()
+        val gitHash = runCatching {
+            providers.exec {
+                commandLine("git", "rev-parse", "--short", "HEAD")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.get().trim()
+        }.getOrElse { "" }.ifBlank { "unknown" }
 
         buildConfigField("String", "GIT_COMMIT_HASH", "\"$gitHash\"")
-        buildConfigField("String", "APK_BUILT_AT", "\"$buildTime\"")
+        buildConfigField("String", "APK_BUILT_AT", "\"unknown\"")
     }
 
     buildTypes {
@@ -57,6 +53,19 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+afterEvaluate {
+    listOf("Debug", "Release").forEach { buildType ->
+        tasks.named("generate${buildType}BuildConfig").configure {
+            doFirst {
+                val buildTime = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.format(Date())
+                android.defaultConfig.buildConfigField("String", "APK_BUILT_AT", "\"$buildTime\"")
+            }
+        }
     }
 }
 

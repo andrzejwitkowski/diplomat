@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import pl.diplomat.app.ui.theme.DiplomatTheme
+import pl.diplomat.infrastructure.service.DiplomatForegroundService
 import pl.diplomat.presentation.DiplomatApp
 
 class MainActivity : ComponentActivity() {
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ensureContactsPermission()
         ensureNotificationsPermission()
+        DiplomatForegroundService.startSafely(this)
         enableEdgeToEdge()
 
         val application = application as DiplomatApplication

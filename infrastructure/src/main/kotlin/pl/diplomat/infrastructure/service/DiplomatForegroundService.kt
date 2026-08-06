@@ -47,12 +47,16 @@ class DiplomatForegroundService : Service() {
             .build()
     }
 
-    companion object {
+        companion object {
         private const val NOTIFICATION_ID = 1
 
-        fun start(context: Context) {
-            val intent = Intent(context, DiplomatForegroundService::class.java)
-            context.startForegroundService(intent)
+        fun startSafely(context: Context) {
+            try {
+                val intent = Intent(context, DiplomatForegroundService::class.java)
+                context.startForegroundService(intent)
+            } catch (_: Exception) {
+                // Background process creation (e.g. notification listener) cannot start FGS on API 31+.
+            }
         }
     }
 }

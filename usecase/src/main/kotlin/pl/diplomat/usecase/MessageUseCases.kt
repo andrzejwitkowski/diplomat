@@ -31,7 +31,7 @@ class ProcessIncomingMessageUseCase(
     private val messageRepository: MessageRepositoryPort,
 ) {
     suspend operator fun invoke(raw: RawIncomingMessage): ProcessIncomingMessageResult {
-        val contact = resolveContact(raw.senderPhone)
+        val contact = resolveContact(raw.senderPhone, raw.sourceApp)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
         val status = when (val content = raw.content) {
@@ -55,7 +55,7 @@ class ProcessIncomingMessageUseCase(
         return ProcessIncomingMessageResult.Saved(message.copy(id = id), contact)
     }
 
-    private suspend fun resolveContact(sender: String): WhitelistedContact? {
+    private suspend fun resolveContact(sender: String, sourceApp: MessageSourceApp): WhitelistedContact? {
         val trimmed = sender.trim()
         if (trimmed.isBlank()) return null
 
@@ -63,6 +63,7 @@ class ProcessIncomingMessageUseCase(
             ?.let { contactRepository.findByPhoneNumber(it) }
             ?.let { return it }
 
+        if (sourceApp != MessageSourceApp.WHATSAPP) return null
         return contactRepository.findByDisplayName(trimmed)
     }
 

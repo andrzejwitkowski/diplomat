@@ -29,7 +29,6 @@ import pl.diplomat.usecase.GetWhitelistedContactsUseCase
 import pl.diplomat.usecase.ProcessIncomingMessageResult
 import pl.diplomat.usecase.ProcessIncomingMessageUseCase
 import pl.diplomat.usecase.RawIncomingMessage
-import pl.diplomat.infrastructure.service.DiplomatForegroundService
 import pl.diplomat.usecase.RemoveContactFromWhitelistUseCase
 import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
 
@@ -67,7 +66,6 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
         IncomingMessageNotifier.ensureChannel(this)
         incomingMessageNotifier = IncomingMessageNotifier(this)
-        DiplomatForegroundService.start(this)
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)

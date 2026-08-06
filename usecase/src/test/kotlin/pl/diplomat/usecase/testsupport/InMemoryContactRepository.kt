@@ -17,14 +17,14 @@ class InMemoryContactRepository : ContactRepositoryPort {
     override suspend fun add(displayName: String, phoneNumber: PhoneNumber, avatarUri: String?): Long {
         val id = nextId++
         contacts.update { current ->
-            current + WhitelistedContact(id, displayName, phoneNumber, avatarUri)
+            current + WhitelistedContact(id, displayName.trim(), phoneNumber, avatarUri)
         }
         return id
     }
 
     override suspend fun update(contact: WhitelistedContact) {
         contacts.update { current ->
-            current.map { if (it.id == contact.id) contact else it }
+            current.map { if (it.id == contact.id) contact.copy(displayName = contact.displayName.trim()) else it }
         }
     }
 

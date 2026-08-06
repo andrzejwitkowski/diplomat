@@ -14,7 +14,7 @@ internal fun WhitelistedContactEntity.toDomain(): WhitelistedContact =
 internal fun WhitelistedContact.toEntity(): WhitelistedContactEntity =
     WhitelistedContactEntity(
         id = id,
-        displayName = displayName,
+        displayName = displayName.trim(),
         phoneNumber = phoneNumber.value,
         normalizedPhoneNumber = phoneNumber.normalized(),
         avatarUri = avatarUri,
