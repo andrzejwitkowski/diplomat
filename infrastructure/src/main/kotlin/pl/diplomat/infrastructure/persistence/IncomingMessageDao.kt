@@ -8,11 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IncomingMessageDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: IncomingMessageEntity): Long
-
-    @Query("SELECT EXISTS(SELECT 1 FROM incoming_messages WHERE notificationKey = :notificationKey)")
-    suspend fun existsByNotificationKey(notificationKey: String): Boolean
 
     @Query(
         """

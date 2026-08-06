@@ -36,12 +36,6 @@ class ProcessIncomingMessageUseCase(
         val contact = contactRepository.findByPhoneNumber(phoneNumber)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
-        raw.notificationKey?.let { key ->
-            if (messageRepository.existsByNotificationKey(key)) {
-                return ProcessIncomingMessageResult.IgnoredDuplicate
-            }
-        }
-
         val status = when (val content = raw.content) {
             is MessageContent.VisualOnly -> MessageStatus.PENDING
             is MessageContent.TextOnly -> classifyText(content.body)
@@ -59,6 +53,7 @@ class ProcessIncomingMessageUseCase(
         )
 
         val id = messageRepository.save(message)
+        if (id == -1L) return ProcessIncomingMessageResult.IgnoredDuplicate
         return ProcessIncomingMessageResult.Saved(message.copy(id = id))
     }
 

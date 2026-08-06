@@ -18,9 +18,6 @@ class RoomMessageRepositoryAdapter(
     override suspend fun save(message: IncomingMessage): Long =
         messageDao.insert(message.toEntity())
 
-    override suspend fun existsByNotificationKey(notificationKey: String): Boolean =
-        messageDao.existsByNotificationKey(notificationKey)
-
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
         combine(
             messageDao.observeLatestPerContact(),

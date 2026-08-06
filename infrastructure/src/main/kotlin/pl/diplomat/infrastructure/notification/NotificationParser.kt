@@ -77,6 +77,7 @@ class NotificationParser(
             .removePrefix("🎬")
             .removePrefix("🎞")
             .removePrefix("🎥")
+            .replace("\uFE0F", "")
             .trim()
 
     private fun emojiPrefixKind(normalized: String): VisualMediaKind? = when {

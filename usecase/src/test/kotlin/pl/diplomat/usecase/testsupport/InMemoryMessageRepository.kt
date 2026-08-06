@@ -15,14 +15,20 @@ class InMemoryMessageRepository(
     private var nextId = 1L
 
     override suspend fun save(message: IncomingMessage): Long {
+        if (message.notificationKey != null &&
+            messages.value.any { existing ->
+                existing.notificationKey == message.notificationKey &&
+                    existing.timestamp == message.timestamp &&
+                    existing.content == message.content
+            }
+        ) {
+            return -1L
+        }
         val id = if (message.id == 0L) nextId++ else message.id
         val stored = message.copy(id = id)
         messages.update { current -> current + stored }
         return id
     }
-
-    override suspend fun existsByNotificationKey(notificationKey: String): Boolean =
-        messages.value.any { it.notificationKey == notificationKey }
 
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
         combine(contactRepository.observeAll(), messages) { contacts, all ->

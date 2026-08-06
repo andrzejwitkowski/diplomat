@@ -188,6 +188,23 @@ class NotificationParserTest : BaseSpec() {
     }
 
     @Test
+    fun parsesPhotoNotificationWithEmojiVariationSelector() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_PHOTO_VARIATION)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_PHOTO,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.PHOTO)
+    }
+
+    @Test
     fun ignoresUnsupportedPackage() {
         val parsed = parseNotification(
             packageName = NotificationTestConstants.UNKNOWN_PACKAGE,

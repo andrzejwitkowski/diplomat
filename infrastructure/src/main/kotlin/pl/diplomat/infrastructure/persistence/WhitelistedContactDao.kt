@@ -15,6 +15,9 @@ interface WhitelistedContactDao {
     @Query("SELECT * FROM whitelisted_contacts WHERE id = :id")
     suspend fun findById(id: Long): WhitelistedContactEntity?
 
+    @Query("SELECT * FROM whitelisted_contacts WHERE normalizedPhoneNumber = :normalizedPhoneNumber LIMIT 1")
+    suspend fun findByNormalizedPhoneNumber(normalizedPhoneNumber: String): WhitelistedContactEntity?
+
     @Query("SELECT * FROM whitelisted_contacts")
     suspend fun getAll(): List<WhitelistedContactEntity>
 

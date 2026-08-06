@@ -37,10 +37,6 @@ class RoomContactRepositoryAdapter(
     override suspend fun findById(id: Long): WhitelistedContact? =
         dao.findById(id)?.toDomain()
 
-    override suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact? {
-        val target = phoneNumber.normalized()
-        return dao.getAll()
-            .firstOrNull { PhoneNumber(it.phoneNumber).normalized() == target }
-            ?.toDomain()
-    }
+    override suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact? =
+        dao.findByNormalizedPhoneNumber(phoneNumber.normalized())?.toDomain()
 }

@@ -54,3 +54,32 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         )
     }
 }
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS index_incoming_messages_notificationKey")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_incoming_messages_notification_dedup " +
+                "ON incoming_messages(notificationKey, timestamp, text, contentType, mediaKind)",
+        )
+
+        db.execSQL(
+            "ALTER TABLE whitelisted_contacts ADD COLUMN normalizedPhoneNumber TEXT NOT NULL DEFAULT ''",
+        )
+        db.query("SELECT id, phoneNumber FROM whitelisted_contacts").use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                val phone = cursor.getString(1)
+                val normalized = phone.filter { it.isDigit() || it == '+' }
+                db.execSQL(
+                    "UPDATE whitelisted_contacts SET normalizedPhoneNumber = ? WHERE id = ?",
+                    arrayOf(normalized, id),
+                )
+            }
+        }
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_whitelisted_contacts_normalizedPhoneNumber " +
+                "ON whitelisted_contacts(normalizedPhoneNumber)",
+        )
+    }
+}

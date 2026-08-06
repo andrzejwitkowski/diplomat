@@ -18,7 +18,10 @@ import androidx.room.PrimaryKey
     indices = [
         Index("contactId"),
         Index("timestamp"),
-        Index(value = ["notificationKey"], unique = true),
+        Index(
+            value = ["notificationKey", "timestamp", "text", "contentType", "mediaKind"],
+            unique = true,
+        ),
     ],
 )
 data class IncomingMessageEntity(

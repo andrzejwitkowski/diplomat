@@ -137,6 +137,25 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
     fun `ignores duplicate notification key`() = runTest {
         contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         val notificationKey = "notification-key-1"
+        val message = aRawIncomingMessage()
+            .withSenderPhone(TestConstants.ALICE_PHONE)
+            .withText(TestConstants.TEXT_HELLO)
+            .withTimestamp(TestConstants.TIMESTAMP_1)
+            .withNotificationKey(notificationKey)
+            .build()
+
+        useCase(message)
+
+        val duplicate = useCase(message)
+
+        ProcessResultAssertion.assertThat(duplicate).isIgnoredDuplicate()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
+    }
+
+    @Test
+    fun `saves distinct messages that share notification key`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val notificationKey = "notification-key-1"
 
         useCase(
             aRawIncomingMessage()
@@ -147,7 +166,7 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
                 .build(),
         )
 
-        val duplicate = useCase(
+        val second = useCase(
             aRawIncomingMessage()
                 .withSenderPhone(TestConstants.ALICE_PHONE)
                 .withText(TestConstants.TEXT_LONG)
@@ -156,7 +175,7 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
                 .build(),
         )
 
-        ProcessResultAssertion.assertThat(duplicate).isIgnoredDuplicate()
-        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
+        ProcessResultAssertion.assertThat(second).isSaved()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(2)
     }
 }

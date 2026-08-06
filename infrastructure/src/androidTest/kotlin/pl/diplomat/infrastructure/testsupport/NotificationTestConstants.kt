@@ -9,6 +9,7 @@ object NotificationTestConstants {
     const val SMS_SENDER = "+48 123 456 789"
 
     const val NOTIFICATION_TEXT_PHOTO = "📷 Photo"
+    const val NOTIFICATION_TEXT_PHOTO_VARIATION = "🖼️ photo"
     const val NOTIFICATION_TEXT_PHOTO_PL = "Zdjęcie"
     const val NOTIFICATION_TEXT_GIF = "GIF"
     const val NOTIFICATION_TEXT_GIF_EMOJI = "🎬 GIF"
