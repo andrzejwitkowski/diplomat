@@ -3,6 +3,8 @@ package pl.diplomat.app
 import android.app.Application
 import androidx.room.Room
 import pl.diplomat.infrastructure.DiplomatServiceLocator
+import pl.diplomat.infrastructure.notification.NotificationParser
+import pl.diplomat.infrastructure.notification.VisualPlaceholderCatalog
 import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
 import pl.diplomat.infrastructure.adapter.LocalAvatarStorageAdapter
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
@@ -25,6 +27,9 @@ import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
 
 class DiplomatApplication : Application(), DiplomatServiceLocator {
 
+    override lateinit var notificationParser: NotificationParser
+        private set
+
     lateinit var dashboardViewModel: DashboardViewModel
         private set
 
@@ -35,6 +40,8 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
 
     override fun onCreate() {
         super.onCreate()
+        notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
+
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()

@@ -14,7 +14,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesSmsNotification() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.SMS_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.SMS_SENDER)
@@ -31,7 +31,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesWhatsAppNotification() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -49,8 +49,25 @@ class NotificationParserTest : BaseSpec() {
     }
 
     @Test
+    fun parsesPolishPhotoPlaceholderFromLocalizedResources() {
+        val parsed = notificationParser.parse(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_PHOTO_PL)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_PHOTO,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.PHOTO)
+    }
+
+    @Test
     fun parsesPhotoNotificationFromPlaceholderText() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -67,7 +84,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesGifNotificationFromPlaceholderText() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -84,7 +101,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesGifNotificationFromEmojiPrefix() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -101,7 +118,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesStickerNotification() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -118,7 +135,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesVideoNotification() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -135,7 +152,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesImageWithCaptionNotification() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
@@ -155,7 +172,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesImageOnlyNotificationFromPictureExtra() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.SMS_PACKAGE,
             extras = notificationExtras()
                 .withTitle(NotificationTestConstants.SMS_SENDER)
@@ -171,7 +188,7 @@ class NotificationParserTest : BaseSpec() {
 
     @Test
     fun ignoresUnsupportedPackage() {
-        val parsed = NotificationParser.parse(
+        val parsed = notificationParser.parse(
             packageName = NotificationTestConstants.UNKNOWN_PACKAGE,
             extras = notificationExtras()
                 .withText(NotificationTestConstants.NOTIFICATION_TEXT_IGNORED)

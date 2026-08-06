@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="visual_placeholders_photo">
+        <item>zdjęcie</item>
+        <item>zdjecie</item>
+        <item>obraz</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_gif">
+        <item>animowany gif</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_sticker">
+        <item>naklejka</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_video">
+        <item>film</item>
+        <item>wideo</item>
+    </string-array>
+</resources>

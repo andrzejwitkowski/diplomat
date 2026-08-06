@@ -13,46 +13,9 @@ data class ParsedNotification(
     val sourceApp: MessageSourceApp,
 )
 
-object NotificationParser {
-    private val SMS_PACKAGES = setOf(
-        "com.google.android.apps.messaging",
-        "com.android.mms",
-        "com.samsung.android.messaging",
-    )
-
-    private val WHATSAPP_PACKAGES = setOf(
-        "com.whatsapp",
-        "com.whatsapp.w4b",
-    )
-
-    private val VISUAL_PLACEHOLDERS: Map<VisualMediaKind, Set<String>> = mapOf(
-        VisualMediaKind.PHOTO to setOf(
-            "photo",
-            "image",
-            "picture",
-            "zdjęcie",
-            "zdjecie",
-            "obraz",
-            "picture message",
-            "mms",
-            "multimedia message",
-        ),
-        VisualMediaKind.GIF to setOf(
-            "gif",
-            "animated gif",
-            "animowany gif",
-        ),
-        VisualMediaKind.STICKER to setOf(
-            "sticker",
-            "naklejka",
-        ),
-        VisualMediaKind.VIDEO to setOf(
-            "video",
-            "film",
-            "wideo",
-        ),
-    )
-
+class NotificationParser(
+    private val placeholders: VisualPlaceholderCatalog,
+) {
     fun parse(packageName: String, extras: Bundle, postedAtMillis: Long): ParsedNotification? {
         val sourceApp = resolveSourceApp(packageName) ?: return null
         val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
@@ -75,13 +38,11 @@ object NotificationParser {
         )
     }
 
-    fun isSupportedPackage(packageName: String): Boolean =
-        resolveSourceApp(packageName) != null
-
     internal fun resolveContent(text: String, extras: Bundle): MessageContent? {
         val trimmedText = text.trim()
         val hasPicture = hasPictureAttachment(extras)
-        val placeholderKind = detectVisualPlaceholderKind(trimmedText)
+        val emojiKind = emojiPrefixKind(trimmedText.lowercase())
+        val placeholderKind = emojiKind ?: placeholders.detectKind(trimmedText)
 
         return when {
             hasPicture && trimmedText.isBlank() -> MessageContent.VisualOnly(VisualMediaKind.PHOTO)
@@ -94,23 +55,11 @@ object NotificationParser {
         }
     }
 
-    internal fun detectVisualPlaceholderKind(text: String): VisualMediaKind? {
-        val normalized = text.trim().lowercase()
-        if (normalized.isBlank()) return null
-
-        emojiPrefixKind(normalized)?.let { return it }
-
-        return VISUAL_PLACEHOLDERS.entries.firstOrNull { (_, labels) ->
-            labels.any { label -> normalized == label || normalized.endsWith(" $label") }
-        }?.key
-    }
-
-    internal fun isPlaceholderOnly(text: String, kind: VisualMediaKind): Boolean {
+    private fun isPlaceholderOnly(text: String, kind: VisualMediaKind): Boolean {
         val normalized = text.trim().lowercase()
         if (normalized.isBlank()) return true
         emojiPrefixKind(normalized)?.let { return it == kind }
-        val labels = VISUAL_PLACEHOLDERS.getValue(kind)
-        return labels.any { label -> normalized == label || normalized.endsWith(" $label") }
+        return placeholders.isPlaceholderOnly(text, kind)
     }
 
     private fun emojiPrefixKind(normalized: String): VisualMediaKind? = when {
@@ -121,11 +70,38 @@ object NotificationParser {
         else -> null
     }
 
-    private fun resolveSourceApp(packageName: String): MessageSourceApp? = when {
-        packageName in SMS_PACKAGES -> MessageSourceApp.SMS
-        packageName in WHATSAPP_PACKAGES -> MessageSourceApp.WHATSAPP
-        else -> null
+    fun toRaw(parsed: ParsedNotification): RawIncomingMessage =
+        RawIncomingMessage(
+            senderPhone = parsed.senderPhone,
+            content = parsed.content,
+            timestamp = parsed.timestamp,
+            sourceApp = parsed.sourceApp,
+        )
+
+    companion object {
+        private val SMS_PACKAGES = setOf(
+            "com.google.android.apps.messaging",
+            "com.android.mms",
+            "com.samsung.android.messaging",
+        )
+
+        private val WHATSAPP_PACKAGES = setOf(
+            "com.whatsapp",
+            "com.whatsapp.w4b",
+        )
+
+        fun isSupportedPackage(packageName: String): Boolean =
+            resolveSourceApp(packageName) != null
+
+        private fun resolveSourceApp(packageName: String): MessageSourceApp? = when {
+            packageName in SMS_PACKAGES -> MessageSourceApp.SMS
+            packageName in WHATSAPP_PACKAGES -> MessageSourceApp.WHATSAPP
+            else -> null
+        }
     }
+
+    private fun resolveSourceApp(packageName: String): MessageSourceApp? =
+        Companion.resolveSourceApp(packageName)
 
     private fun extractNotificationText(extras: Bundle): String {
         extras.getCharSequence("android.text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
@@ -158,12 +134,4 @@ object NotificationParser {
         title.takeIf { it.isNotBlank() }?.let { return it }
         return null
     }
-
-    fun toRaw(parsed: ParsedNotification): RawIncomingMessage =
-        RawIncomingMessage(
-            senderPhone = parsed.senderPhone,
-            content = parsed.content,
-            timestamp = parsed.timestamp,
-            sourceApp = parsed.sourceApp,
-        )
 }

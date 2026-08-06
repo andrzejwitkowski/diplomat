@@ -18,16 +18,15 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
         val packageName = sbn.packageName
         if (!NotificationParser.isSupportedPackage(packageName)) return
 
-        val parsed = NotificationParser.parse(
+        val locator = application as? DiplomatServiceLocator ?: return
+        val parsed = locator.notificationParser.parse(
             packageName = packageName,
             extras = sbn.notification.extras,
             postedAtMillis = sbn.postTime,
         ) ?: return
 
-        val locator = application as? DiplomatServiceLocator ?: return
-
         serviceScope.launch {
-            when (locator.processIncomingMessage(NotificationParser.toRaw(parsed))) {
+            when (locator.processIncomingMessage(locator.notificationParser.toRaw(parsed))) {
                 is ProcessIncomingMessageResult.Saved -> Unit
                 ProcessIncomingMessageResult.RejectedNotWhitelisted -> Unit
             }
