@@ -2,20 +2,18 @@ package pl.diplomat.infrastructure.notification
 
 import android.graphics.Bitmap
 import android.os.Bundle
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.domain.model.visualKind
+import pl.diplomat.infrastructure.BaseSpec
 
-@RunWith(AndroidJUnit4::class)
-class NotificationParserTest {
+class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesSmsNotification() {
