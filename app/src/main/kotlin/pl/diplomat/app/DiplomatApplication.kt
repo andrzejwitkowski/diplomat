@@ -6,6 +6,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import pl.diplomat.infrastructure.DiplomatServiceLocator
+import pl.diplomat.infrastructure.appinfo.AppBuildInfo
+import pl.diplomat.infrastructure.notification.IncomingMessageNotifier
 import pl.diplomat.infrastructure.notification.NotificationParser
 import pl.diplomat.infrastructure.notification.VisualPlaceholderCatalog
 import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
@@ -27,6 +29,7 @@ import pl.diplomat.usecase.GetWhitelistedContactsUseCase
 import pl.diplomat.usecase.ProcessIncomingMessageResult
 import pl.diplomat.usecase.ProcessIncomingMessageUseCase
 import pl.diplomat.usecase.RawIncomingMessage
+import pl.diplomat.infrastructure.service.DiplomatForegroundService
 import pl.diplomat.usecase.RemoveContactFromWhitelistUseCase
 import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
 
@@ -40,6 +43,17 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override lateinit var notificationParser: NotificationParser
         private set
 
+    override lateinit var incomingMessageNotifier: IncomingMessageNotifier
+        private set
+
+    val buildInfo: AppBuildInfo by lazy {
+        AppBuildInfo(
+            versionName = BuildConfig.VERSION_NAME,
+            gitCommitHash = BuildConfig.GIT_COMMIT_HASH,
+            apkBuiltAt = BuildConfig.APK_BUILT_AT,
+        )
+    }
+
     lateinit var dashboardViewModel: DashboardViewModel
         private set
 
@@ -51,6 +65,9 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override fun onCreate() {
         super.onCreate()
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
+        IncomingMessageNotifier.ensureChannel(this)
+        incomingMessageNotifier = IncomingMessageNotifier(this)
+        DiplomatForegroundService.start(this)
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
@@ -69,6 +86,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
 
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
+            buildInfo = buildInfo,
         )
 
         whitelistViewModel = WhitelistViewModel(

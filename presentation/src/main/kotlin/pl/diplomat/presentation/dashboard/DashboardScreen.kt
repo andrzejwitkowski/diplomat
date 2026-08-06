@@ -49,6 +49,7 @@ import coil.compose.AsyncImage
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
+import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
@@ -97,6 +98,7 @@ fun DashboardRoute(
             DashboardScreen(
                 conversations = state.conversations,
                 isNotificationListenerEnabled = state.isNotificationListenerEnabled,
+                buildInfo = state.buildInfo,
                 onOpenNotificationSettings = {
                     context.startActivity(NotificationListenerPermission.settingsIntent())
                 },
@@ -115,6 +117,7 @@ fun DashboardRoute(
 fun DashboardScreen(
     conversations: List<ConversationThread>,
     isNotificationListenerEnabled: Boolean,
+    buildInfo: AppBuildInfo,
     onOpenNotificationSettings: () -> Unit,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
@@ -142,6 +145,8 @@ fun DashboardScreen(
                 NotificationPermissionBanner(onOpenNotificationSettings)
             }
 
+            BuildInfoFooter(buildInfo)
+
             if (conversations.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -166,6 +171,37 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BuildInfoFooter(buildInfo: AppBuildInfo) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.build_info_version, buildInfo.versionName),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.build_info_commit, buildInfo.gitCommitHash),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.build_info_apk_built_at, buildInfo.apkBuiltAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

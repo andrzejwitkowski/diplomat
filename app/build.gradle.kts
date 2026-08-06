@@ -1,3 +1,7 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.TimeZone
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -13,8 +17,22 @@ android {
         applicationId = "pl.diplomat"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+
+        val gitHash = providers.exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.map { it.trim().ifBlank { "unknown" } }.get()
+
+        val buildTime = providers.provider {
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date())
+        }.get()
+
+        buildConfigField("String", "GIT_COMMIT_HASH", "\"$gitHash\"")
+        buildConfigField("String", "APK_BUILT_AT", "\"$buildTime\"")
     }
 
     buildTypes {
@@ -38,6 +56,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

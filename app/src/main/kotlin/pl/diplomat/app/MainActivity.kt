@@ -2,6 +2,7 @@ package pl.diplomat.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,9 +22,14 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { /* picker will prompt again if denied */ }
 
+    private val requestNotificationsPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* foreground service still runs; alerts need this on API 33+ */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureContactsPermission()
+        ensureNotificationsPermission()
         enableEdgeToEdge()
 
         val application = application as DiplomatApplication
@@ -48,6 +54,15 @@ class MainActivity : ComponentActivity() {
             != PackageManager.PERMISSION_GRANTED
         ) {
             requestContactsPermission.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    private fun ensureNotificationsPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

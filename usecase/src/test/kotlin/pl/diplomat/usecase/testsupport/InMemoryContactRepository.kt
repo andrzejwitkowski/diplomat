@@ -39,4 +39,7 @@ class InMemoryContactRepository : ContactRepositoryPort {
         val target = phoneNumber.normalized()
         return contacts.value.firstOrNull { it.phoneNumber.normalized() == target }
     }
+
+    override suspend fun findByDisplayName(displayName: String): WhitelistedContact? =
+        contacts.value.firstOrNull { it.displayName.equals(displayName.trim(), ignoreCase = true) }
 }

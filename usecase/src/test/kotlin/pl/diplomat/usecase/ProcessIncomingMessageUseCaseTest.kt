@@ -134,6 +134,24 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
     }
 
     @Test
+    fun `matches whitelisted contact by display name for WhatsApp notifications`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+
+        val result = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_NAME)
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .build(),
+        )
+
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.PENDING) }
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
+    }
+
+    @Test
     fun `ignores duplicate notification key`() = runTest {
         contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         val notificationKey = "notification-key-1"

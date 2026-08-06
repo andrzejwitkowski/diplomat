@@ -39,4 +39,7 @@ class RoomContactRepositoryAdapter(
 
     override suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact? =
         dao.findByNormalizedPhoneNumber(phoneNumber.normalized())?.toDomain()
+
+    override suspend fun findByDisplayName(displayName: String): WhitelistedContact? =
+        dao.findByDisplayName(displayName.trim())?.toDomain()
 }

@@ -6,6 +6,7 @@ import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.domain.model.bodyText
 import pl.diplomat.domain.port.ContactRepositoryPort
 import pl.diplomat.domain.port.MessageRepositoryPort
@@ -20,7 +21,7 @@ data class RawIncomingMessage(
 )
 
 sealed class ProcessIncomingMessageResult {
-    data class Saved(val message: IncomingMessage) : ProcessIncomingMessageResult()
+    data class Saved(val message: IncomingMessage, val contact: WhitelistedContact) : ProcessIncomingMessageResult()
     data object RejectedNotWhitelisted : ProcessIncomingMessageResult()
     data object IgnoredDuplicate : ProcessIncomingMessageResult()
 }
@@ -30,10 +31,7 @@ class ProcessIncomingMessageUseCase(
     private val messageRepository: MessageRepositoryPort,
 ) {
     suspend operator fun invoke(raw: RawIncomingMessage): ProcessIncomingMessageResult {
-        val phoneNumber = runCatching { PhoneNumber(raw.senderPhone.trim()) }.getOrNull()
-            ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
-
-        val contact = contactRepository.findByPhoneNumber(phoneNumber)
+        val contact = resolveContact(raw.senderPhone)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
         val status = when (val content = raw.content) {
@@ -54,7 +52,18 @@ class ProcessIncomingMessageUseCase(
 
         val id = messageRepository.save(message)
         if (id == -1L) return ProcessIncomingMessageResult.IgnoredDuplicate
-        return ProcessIncomingMessageResult.Saved(message.copy(id = id))
+        return ProcessIncomingMessageResult.Saved(message.copy(id = id), contact)
+    }
+
+    private suspend fun resolveContact(sender: String): WhitelistedContact? {
+        val trimmed = sender.trim()
+        if (trimmed.isBlank()) return null
+
+        runCatching { PhoneNumber(trimmed) }.getOrNull()
+            ?.let { contactRepository.findByPhoneNumber(it) }
+            ?.let { return it }
+
+        return contactRepository.findByDisplayName(trimmed)
     }
 
     private fun classifyText(text: String): MessageStatus =

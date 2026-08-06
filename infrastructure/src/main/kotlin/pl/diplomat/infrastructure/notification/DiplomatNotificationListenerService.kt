@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.coroutines.launch
 import pl.diplomat.infrastructure.DiplomatServiceLocator
+import pl.diplomat.usecase.ProcessIncomingMessageResult
 
 class DiplomatNotificationListenerService : NotificationListenerService() {
 
@@ -21,7 +22,11 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
 
         val raw = locator.notificationParser.toRaw(parsed)
         locator.applicationScope.launch {
-            locator.processIncomingMessage(raw)
+            when (val result = locator.processIncomingMessage(raw)) {
+                is ProcessIncomingMessageResult.Saved ->
+                    locator.incomingMessageNotifier.notify(result.contact, result.message)
+                else -> Unit
+            }
         }
     }
 }

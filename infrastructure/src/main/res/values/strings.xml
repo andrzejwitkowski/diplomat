@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="foreground_service_title">Diplomat is running</string>
+    <string name="foreground_service_text">Monitoring whitelisted SMS and WhatsApp messages</string>
+    <string name="incoming_message_channel_name">Incoming messages</string>
+    <string name="incoming_message_channel_description">Alerts for messages from whitelisted contacts</string>
+    <string name="message_preview_image">Photo</string>
+</resources>
