@@ -6,9 +6,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.model.bodyText
 import pl.diplomat.usecase.testsupport.InMemoryContactRepository
 import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 
@@ -31,19 +33,40 @@ class GetActiveConversationsUseCaseTest {
         val bobId = contactRepository.add("Bob", PhoneNumber("+48222222222"))
 
         messageRepository.save(
-            IncomingMessage(0, aliceId, "First", 100L, MessageSourceApp.SMS, MessageStatus.PENDING),
+            IncomingMessage(
+                0,
+                aliceId,
+                MessageContent.TextOnly("First"),
+                100L,
+                MessageSourceApp.SMS,
+                MessageStatus.PENDING,
+            ),
         )
         messageRepository.save(
-            IncomingMessage(0, aliceId, "Latest from Alice", 300L, MessageSourceApp.SMS, MessageStatus.PENDING),
+            IncomingMessage(
+                0,
+                aliceId,
+                MessageContent.TextOnly("Latest from Alice"),
+                300L,
+                MessageSourceApp.SMS,
+                MessageStatus.PENDING,
+            ),
         )
         messageRepository.save(
-            IncomingMessage(0, bobId, "From Bob", 200L, MessageSourceApp.WHATSAPP, MessageStatus.REPLIED),
+            IncomingMessage(
+                0,
+                bobId,
+                MessageContent.ImageOnly,
+                200L,
+                MessageSourceApp.WHATSAPP,
+                MessageStatus.REPLIED,
+            ),
         )
 
         val conversations = useCase().first()
 
         assertEquals(2, conversations.size)
-        assertEquals("Latest from Alice", conversations[0].lastMessage.text)
-        assertEquals("From Bob", conversations[1].lastMessage.text)
+        assertEquals("Latest from Alice", conversations[0].lastMessage.content.bodyText())
+        assertEquals(MessageContent.ImageOnly, conversations[1].lastMessage.content)
     }
 }

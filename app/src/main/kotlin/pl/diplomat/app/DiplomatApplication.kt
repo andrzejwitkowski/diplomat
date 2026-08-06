@@ -11,6 +11,7 @@ import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.persistence.DiplomatDatabase
 import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
 import pl.diplomat.infrastructure.persistence.MIGRATION_2_3
+import pl.diplomat.infrastructure.persistence.MIGRATION_3_4
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -34,7 +35,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override fun onCreate() {
         super.onCreate()
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
         val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao())

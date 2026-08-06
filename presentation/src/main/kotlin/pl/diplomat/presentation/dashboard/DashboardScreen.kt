@@ -53,6 +53,7 @@ import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
 import pl.diplomat.presentation.R
+import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
 import java.util.Date
 
@@ -247,7 +248,7 @@ private fun ConversationThreadCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = thread.lastMessage.text,
+                        text = thread.lastMessage.content.previewText(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,

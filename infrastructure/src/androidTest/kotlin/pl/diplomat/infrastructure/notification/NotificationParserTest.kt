@@ -1,12 +1,15 @@
 package pl.diplomat.infrastructure.notification
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 
 @RunWith(AndroidJUnit4::class)
@@ -27,7 +30,7 @@ class NotificationParserTest {
 
         assertNotNull(parsed)
         assertEquals(MessageSourceApp.SMS, parsed!!.sourceApp)
-        assertEquals("Test SMS body", parsed.text)
+        assertEquals(MessageContent.TextOnly("Test SMS body"), parsed.content)
     }
 
     @Test
@@ -47,6 +50,61 @@ class NotificationParserTest {
         assertNotNull(parsed)
         assertEquals(MessageSourceApp.WHATSAPP, parsed!!.sourceApp)
         assertEquals("Alice", parsed.senderPhone)
+        assertEquals(MessageContent.TextOnly("WhatsApp message"), parsed.content)
+    }
+
+    @Test
+    fun parsesImageOnlyNotificationFromPlaceholderText() {
+        val extras = Bundle().apply {
+            putCharSequence("android.title", "Alice")
+            putCharSequence("android.text", "📷 Photo")
+            putString("android.conversationTitle", "Alice")
+        }
+
+        val parsed = NotificationParser.parse(
+            packageName = "com.whatsapp",
+            extras = extras,
+            postedAtMillis = 2_500L,
+        )
+
+        assertNotNull(parsed)
+        assertEquals(MessageContent.ImageOnly, parsed!!.content)
+    }
+
+    @Test
+    fun parsesImageWithCaptionNotification() {
+        val extras = Bundle().apply {
+            putCharSequence("android.title", "Alice")
+            putCharSequence("android.text", "Look at this sunset")
+            putParcelable("android.picture", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+            putString("android.conversationTitle", "Alice")
+        }
+
+        val parsed = NotificationParser.parse(
+            packageName = "com.whatsapp",
+            extras = extras,
+            postedAtMillis = 2_600L,
+        )
+
+        assertNotNull(parsed)
+        assertEquals(MessageContent.ImageWithText("Look at this sunset"), parsed!!.content)
+    }
+
+    @Test
+    fun parsesImageOnlyNotificationFromPictureExtra() {
+        val extras = Bundle().apply {
+            putCharSequence("android.title", "+48 123 456 789")
+            putParcelable("android.picture", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+        }
+
+        val parsed = NotificationParser.parse(
+            packageName = "com.google.android.apps.messaging",
+            extras = extras,
+            postedAtMillis = 2_700L,
+        )
+
+        assertNotNull(parsed)
+        assertTrue(parsed!!.content is MessageContent.ImageOnly)
     }
 
     @Test

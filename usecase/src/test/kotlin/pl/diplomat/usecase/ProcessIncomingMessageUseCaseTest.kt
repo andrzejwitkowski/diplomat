@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
@@ -29,7 +30,7 @@ class ProcessIncomingMessageUseCaseTest {
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "+48123456789",
-                text = "Hello",
+                content = MessageContent.TextOnly("Hello"),
                 timestamp = 1_000L,
                 sourceApp = MessageSourceApp.SMS,
             ),
@@ -46,7 +47,7 @@ class ProcessIncomingMessageUseCaseTest {
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "+48123456789",
-                text = "Can we meet tomorrow afternoon?",
+                content = MessageContent.TextOnly("Can we meet tomorrow afternoon?"),
                 timestamp = 2_000L,
                 sourceApp = MessageSourceApp.WHATSAPP,
             ),
@@ -65,7 +66,7 @@ class ProcessIncomingMessageUseCaseTest {
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "5550100",
-                text = "OK",
+                content = MessageContent.TextOnly("OK"),
                 timestamp = 3_000L,
                 sourceApp = MessageSourceApp.SMS,
             ),
@@ -82,7 +83,7 @@ class ProcessIncomingMessageUseCaseTest {
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "5550100",
-                text = "Ready?",
+                content = MessageContent.TextOnly("Ready?"),
                 timestamp = 4_000L,
                 sourceApp = MessageSourceApp.SMS,
             ),
@@ -93,14 +94,49 @@ class ProcessIncomingMessageUseCaseTest {
     }
 
     @Test
+    fun `image only message is always pending`() = runTest {
+        contactRepository.add("Bob", PhoneNumber("555-0100"))
+
+        val result = useCase(
+            RawIncomingMessage(
+                senderPhone = "5550100",
+                content = MessageContent.ImageOnly,
+                timestamp = 5_000L,
+                sourceApp = MessageSourceApp.WHATSAPP,
+            ),
+        )
+
+        val saved = (result as ProcessIncomingMessageResult.Saved).message
+        assertEquals(MessageStatus.PENDING, saved.status)
+        assertTrue(saved.content is MessageContent.ImageOnly)
+    }
+
+    @Test
+    fun `image with short caption can still be one-liner`() = runTest {
+        contactRepository.add("Bob", PhoneNumber("555-0100"))
+
+        val result = useCase(
+            RawIncomingMessage(
+                senderPhone = "5550100",
+                content = MessageContent.ImageWithText("OK"),
+                timestamp = 6_000L,
+                sourceApp = MessageSourceApp.WHATSAPP,
+            ),
+        )
+
+        val saved = (result as ProcessIncomingMessageResult.Saved).message
+        assertEquals(MessageStatus.IGNORED_CONFIRMATION, saved.status)
+    }
+
+    @Test
     fun `rejects invalid phone number`() = runTest {
         contactRepository.add("Alice", PhoneNumber("+48123456789"))
 
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "   ",
-                text = "Hello",
-                timestamp = 5_000L,
+                content = MessageContent.TextOnly("Hello"),
+                timestamp = 7_000L,
                 sourceApp = MessageSourceApp.SMS,
             ),
         )

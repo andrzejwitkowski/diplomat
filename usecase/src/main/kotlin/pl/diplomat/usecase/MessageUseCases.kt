@@ -2,16 +2,18 @@ package pl.diplomat.usecase
 
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.model.bodyText
 import pl.diplomat.domain.port.ContactRepositoryPort
 import pl.diplomat.domain.port.MessageRepositoryPort
 import kotlinx.coroutines.flow.Flow
 
 data class RawIncomingMessage(
     val senderPhone: String,
-    val text: String,
+    val content: MessageContent,
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
 )
@@ -32,16 +34,16 @@ class ProcessIncomingMessageUseCase(
         val contact = contactRepository.findByPhoneNumber(phoneNumber)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
-        val status = if (isOneLiner(raw.text)) {
-            MessageStatus.IGNORED_CONFIRMATION
-        } else {
-            MessageStatus.PENDING
+        val status = when (val content = raw.content) {
+            is MessageContent.ImageOnly -> MessageStatus.PENDING
+            is MessageContent.TextOnly -> classifyText(content.body)
+            is MessageContent.ImageWithText -> classifyText(content.body)
         }
 
         val message = IncomingMessage(
             id = 0,
             contactId = contact.id,
-            text = raw.text.trim(),
+            content = raw.content,
             timestamp = raw.timestamp,
             sourceApp = raw.sourceApp,
             status = status,
@@ -50,6 +52,9 @@ class ProcessIncomingMessageUseCase(
         val id = messageRepository.save(message)
         return ProcessIncomingMessageResult.Saved(message.copy(id = id))
     }
+
+    private fun classifyText(text: String): MessageStatus =
+        if (isOneLiner(text)) MessageStatus.IGNORED_CONFIRMATION else MessageStatus.PENDING
 
     private fun isOneLiner(text: String): Boolean {
         val trimmed = text.trim()

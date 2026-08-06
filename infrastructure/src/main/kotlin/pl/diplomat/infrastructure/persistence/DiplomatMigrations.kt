@@ -28,3 +28,11 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_incoming_messages_timestamp ON incoming_messages(timestamp)")
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE incoming_messages ADD COLUMN contentType TEXT NOT NULL DEFAULT 'TEXT'",
+        )
+    }
+}

@@ -21,6 +21,7 @@ data class IncomingMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val contactId: Long,
     val text: String,
+    val contentType: String,
     val timestamp: Long,
     val sourceApp: String,
     val status: String,

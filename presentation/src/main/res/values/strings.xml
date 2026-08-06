@@ -23,6 +23,8 @@
     <string name="status_pending">Pending</string>
     <string name="status_ignored">Ignored</string>
     <string name="status_replied">Replied</string>
+    <string name="message_preview_image">Photo</string>
+    <string name="message_preview_image_with_text">Photo: %1$s</string>
     <string name="conversation_detail_title">Conversation</string>
     <string name="back">Back</string>
 </resources>

@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.presentation.R
+import pl.diplomat.presentation.message.previewText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +50,7 @@ fun ConversationDetailScreen(
                 .padding(16.dp),
         ) {
             Text(
-                text = thread.lastMessage.text,
+                text = thread.lastMessage.content.previewText(),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Box(
