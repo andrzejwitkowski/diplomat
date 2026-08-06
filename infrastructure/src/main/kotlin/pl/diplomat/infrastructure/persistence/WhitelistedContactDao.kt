@@ -18,6 +18,12 @@ interface WhitelistedContactDao {
     @Query("SELECT * FROM whitelisted_contacts WHERE normalizedPhoneNumber = :normalizedPhoneNumber LIMIT 1")
     suspend fun findByNormalizedPhoneNumber(normalizedPhoneNumber: String): WhitelistedContactEntity?
 
+    @Query("SELECT * FROM whitelisted_contacts WHERE phoneMatchKey = :phoneMatchKey LIMIT 1")
+    suspend fun findByPhoneMatchKey(phoneMatchKey: String): WhitelistedContactEntity?
+
+    @Query("SELECT * FROM whitelisted_contacts WHERE displayName = :displayName COLLATE NOCASE LIMIT 1")
+    suspend fun findByDisplayName(displayName: String): WhitelistedContactEntity?
+
     @Query("SELECT * FROM whitelisted_contacts")
     suspend fun getAll(): List<WhitelistedContactEntity>
 

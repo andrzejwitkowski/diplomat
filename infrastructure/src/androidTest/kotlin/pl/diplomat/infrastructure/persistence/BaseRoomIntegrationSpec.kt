@@ -4,6 +4,7 @@ import androidx.room.Room
 import org.junit.After
 import org.junit.Before
 import pl.diplomat.infrastructure.BaseSpec
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
 
@@ -24,7 +25,7 @@ abstract class BaseRoomIntegrationSpec : BaseSpec() {
             .allowMainThreadQueries()
             .build()
         val contactDao = database.whitelistedContactDao()
-        contactRepository = RoomContactRepositoryAdapter(contactDao)
+        contactRepository = RoomContactRepositoryAdapter(contactDao, NormalizationService.default)
         messageRepository = RoomMessageRepositoryAdapter(
             messageDao = database.incomingMessageDao(),
             contactDao = contactDao,

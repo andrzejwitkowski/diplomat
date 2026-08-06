@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.domain.port.AvatarStoragePort
 import pl.diplomat.domain.port.DeviceContact
 import pl.diplomat.domain.port.SystemContactsPort
@@ -15,6 +16,7 @@ import java.util.UUID
 
 class AndroidSystemContactsAdapter(
     private val contentResolver: ContentResolver,
+    private val normalization: NormalizationService,
 ) : SystemContactsPort {
 
     override suspend fun lookupContact(lookupUri: String): DeviceContact? = withContext(Dispatchers.IO) {
@@ -36,12 +38,33 @@ class AndroidSystemContactsAdapter(
             val phoneNumber = cursor.getString(1) ?: return@withContext null
             val photoUri = cursor.getString(2) ?: cursor.getString(3)
             DeviceContact(
-                displayName = displayName,
+                displayName = normalization.normalizeDisplayName(displayName).value,
                 phoneNumber = PhoneNumber(phoneNumber),
                 avatarUri = photoUri,
             )
         }
     }
+
+    override suspend fun findPhoneNumbersByDisplayName(displayName: String): List<PhoneNumber> =
+        withContext(Dispatchers.IO) {
+            val normalizedName = normalization.normalizeDisplayName(displayName).value
+            if (normalizedName.isBlank()) return@withContext emptyList()
+
+            contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ? COLLATE NOCASE",
+                arrayOf(normalizedName),
+                null,
+            )?.use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val number = cursor.getString(0) ?: continue
+                        runCatching { add(PhoneNumber(number)) }
+                    }
+                }
+            } ?: emptyList()
+        }
 }
 
 class LocalAvatarStorageAdapter(

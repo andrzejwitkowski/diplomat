@@ -6,6 +6,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import pl.diplomat.infrastructure.DiplomatServiceLocator
+import pl.diplomat.infrastructure.appinfo.AppBuildInfo
+import pl.diplomat.infrastructure.notification.IncomingMessageNotifier
 import pl.diplomat.infrastructure.notification.NotificationParser
 import pl.diplomat.infrastructure.notification.VisualPlaceholderCatalog
 import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
@@ -20,6 +22,8 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_3_4
 import pl.diplomat.infrastructure.persistence.MIGRATION_4_5
 import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.persistence.MIGRATION_6_7
+import pl.diplomat.infrastructure.persistence.MIGRATION_7_8
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -40,6 +44,17 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override lateinit var notificationParser: NotificationParser
         private set
 
+    override lateinit var incomingMessageNotifier: IncomingMessageNotifier
+        private set
+
+    val buildInfo: AppBuildInfo by lazy {
+        AppBuildInfo(
+            versionName = BuildConfig.VERSION_NAME,
+            gitCommitHash = BuildConfig.GIT_COMMIT_HASH,
+            apkBuiltAt = BuildConfig.APK_BUILT_AT,
+        )
+    }
+
     lateinit var dashboardViewModel: DashboardViewModel
         private set
 
@@ -51,29 +66,38 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override fun onCreate() {
         super.onCreate()
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
+        IncomingMessageNotifier.ensureChannel(this)
+        incomingMessageNotifier = IncomingMessageNotifier(this)
+
+        val normalization = NormalizationService.default
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
 
-        val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao())
+        val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao(), normalization)
         val messageRepository = RoomMessageRepositoryAdapter(
             messageDao = database.incomingMessageDao(),
             contactDao = database.whitelistedContactDao(),
         )
 
-        val systemContacts = AndroidSystemContactsAdapter(contentResolver)
+        val systemContacts = AndroidSystemContactsAdapter(contentResolver, normalization)
         val avatarStorage = LocalAvatarStorageAdapter(this)
 
-        processIncomingMessage = ProcessIncomingMessageUseCase(contactRepository, messageRepository)
+        processIncomingMessage = ProcessIncomingMessageUseCase(
+            contactRepository,
+            messageRepository,
+            systemContacts,
+        )
 
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
+            buildInfo = buildInfo,
         )
 
         whitelistViewModel = WhitelistViewModel(
             getWhitelistedContacts = GetWhitelistedContactsUseCase(contactRepository),
-            addContact = AddContactToWhitelistUseCase(contactRepository),
+            addContact = AddContactToWhitelistUseCase(contactRepository, normalization),
             updateContact = UpdateWhitelistedContactUseCase(contactRepository),
             removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(contactRepository),
             systemContacts = systemContacts,

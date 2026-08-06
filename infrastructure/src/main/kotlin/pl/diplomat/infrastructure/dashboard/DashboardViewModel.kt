@@ -3,6 +3,7 @@ package pl.diplomat.infrastructure.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import pl.diplomat.domain.model.ConversationThread
+import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.usecase.GetActiveConversationsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +18,7 @@ sealed interface DashboardUiState {
     data class Content(
         val conversations: List<ConversationThread>,
         val isNotificationListenerEnabled: Boolean,
+        val buildInfo: AppBuildInfo,
         val selectedThread: ConversationThread? = null,
     ) : DashboardUiState
 
@@ -25,19 +27,23 @@ sealed interface DashboardUiState {
 
 class DashboardViewModel(
     getActiveConversations: GetActiveConversationsUseCase,
+    buildInfo: AppBuildInfo,
 ) : ViewModel() {
 
     private val notificationListenerEnabled = MutableStateFlow(false)
     private val selectedThread = MutableStateFlow<ConversationThread?>(null)
+    private val buildInfoState = MutableStateFlow(buildInfo)
 
     val uiState: StateFlow<DashboardUiState> = combine(
         getActiveConversations(),
         notificationListenerEnabled,
         selectedThread,
-    ) { conversations, listenerEnabled, thread ->
+        buildInfoState,
+    ) { conversations, listenerEnabled, thread, info ->
         DashboardUiState.Content(
             conversations = conversations,
             isNotificationListenerEnabled = listenerEnabled,
+            buildInfo = info,
             selectedThread = thread,
         )
     }

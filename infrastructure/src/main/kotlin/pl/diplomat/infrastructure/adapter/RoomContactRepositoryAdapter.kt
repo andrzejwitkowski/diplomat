@@ -2,6 +2,7 @@ package pl.diplomat.infrastructure.adapter
 
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.domain.port.ContactRepositoryPort
 import pl.diplomat.infrastructure.persistence.WhitelistedContactDao
 import pl.diplomat.infrastructure.persistence.toDomain
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.map
 
 class RoomContactRepositoryAdapter(
     private val dao: WhitelistedContactDao,
+    private val normalization: NormalizationService,
 ) : ContactRepositoryPort {
 
     override fun observeAll(): Flow<List<WhitelistedContact>> =
@@ -20,14 +22,14 @@ class RoomContactRepositoryAdapter(
         dao.insert(
             WhitelistedContact(
                 id = 0,
-                displayName = displayName,
+                displayName = normalization.normalizeDisplayName(displayName).value,
                 phoneNumber = phoneNumber,
                 avatarUri = avatarUri,
-            ).toEntity(),
+            ).toEntity(normalization),
         )
 
     override suspend fun update(contact: WhitelistedContact) {
-        dao.update(contact.toEntity())
+        dao.update(contact.toEntity(normalization))
     }
 
     override suspend fun remove(id: Long) {
@@ -38,5 +40,8 @@ class RoomContactRepositoryAdapter(
         dao.findById(id)?.toDomain()
 
     override suspend fun findByPhoneNumber(phoneNumber: PhoneNumber): WhitelistedContact? =
-        dao.findByNormalizedPhoneNumber(phoneNumber.normalized())?.toDomain()
+        dao.findByPhoneMatchKey(normalization.normalizePhone(phoneNumber.value).matchKey)?.toDomain()
+
+    override suspend fun findByDisplayName(displayName: String): WhitelistedContact? =
+        dao.findByDisplayName(normalization.normalizeDisplayName(displayName).value)?.toDomain()
 }
