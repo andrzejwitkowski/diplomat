@@ -36,7 +36,7 @@ class DiplomatForegroundService : Service() {
             )
         }
 
-        return NotificationCompat.Builder(this, IncomingMessageNotifier.CHANNEL_ID)
+        return NotificationCompat.Builder(this, IncomingMessageNotifier.FOREGROUND_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(getString(R.string.foreground_service_title))
             .setContentText(getString(R.string.foreground_service_text))

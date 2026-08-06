@@ -2,6 +2,8 @@
 <resources>
     <string name="foreground_service_title">Diplomat działa</string>
     <string name="foreground_service_text">Monitoruje SMS i WhatsApp z whitelisty</string>
+    <string name="foreground_service_channel_name">Monitorowanie w tle</string>
+    <string name="foreground_service_channel_description">Utrzymuje Diplomata aktywnego w tle</string>
     <string name="incoming_message_channel_name">Wiadomości przychodzące</string>
     <string name="incoming_message_channel_description">Powiadomienia o wiadomościach z kontaktów na whiteliście</string>
     <string name="message_preview_image">Zdjęcie</string>

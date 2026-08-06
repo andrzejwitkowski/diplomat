@@ -20,20 +20,28 @@ class IncomingMessageNotifier(private val context: Context) {
         if (message.status != MessageStatus.PENDING) return
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_email)
-            .setContentTitle(contact.displayName)
-            .setContentText(message.content.bodyText().orEmpty().ifBlank { context.getString(R.string.message_preview_image) })
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setAutoCancel(true)
-            .setContentIntent(openAppPendingIntent())
-            .build()
+        try {
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_email)
+                .setContentTitle(contact.displayName)
+                .setContentText(
+                    message.content.bodyText().orEmpty().ifBlank {
+                        context.getString(R.string.message_preview_image)
+                    },
+                )
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setAutoCancel(true)
+                .setContentIntent(openAppPendingIntent())
+                .build()
 
-        NotificationManagerCompat.from(context).notify(
-            (MESSAGE_NOTIFICATION_ID_BASE + message.id).toInt(),
-            notification,
-        )
+            NotificationManagerCompat.from(context).notify(
+                (MESSAGE_NOTIFICATION_ID_BASE + message.id).toInt(),
+                notification,
+            )
+        } catch (_: SecurityException) {
+            // POST_NOTIFICATIONS not granted on Android 13+.
+        }
     }
 
     private fun openAppPendingIntent(): PendingIntent {
@@ -45,19 +53,28 @@ class IncomingMessageNotifier(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "incoming_messages"
+        const val FOREGROUND_CHANNEL_ID = "foreground_service"
         private const val MESSAGE_NOTIFICATION_ID_BASE = 10_000
 
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
-            val channel = NotificationChannel(
+            val incomingChannel = NotificationChannel(
                 CHANNEL_ID,
                 context.getString(R.string.incoming_message_channel_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = context.getString(R.string.incoming_message_channel_description)
             }
-            manager.createNotificationChannel(channel)
+            val foregroundChannel = NotificationChannel(
+                FOREGROUND_CHANNEL_ID,
+                context.getString(R.string.foreground_service_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = context.getString(R.string.foreground_service_channel_description)
+            }
+            manager.createNotificationChannel(incomingChannel)
+            manager.createNotificationChannel(foregroundChannel)
         }
     }
 }
