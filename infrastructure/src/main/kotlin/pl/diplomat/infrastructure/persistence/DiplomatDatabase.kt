@@ -4,10 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [WhitelistedContactEntity::class],
-    version = 2,
+    entities = [WhitelistedContactEntity::class, IncomingMessageEntity::class],
+    version = 7,
     exportSchema = false,
 )
 abstract class DiplomatDatabase : RoomDatabase() {
     abstract fun whitelistedContactDao(): WhitelistedContactDao
+    abstract fun incomingMessageDao(): IncomingMessageDao
 }

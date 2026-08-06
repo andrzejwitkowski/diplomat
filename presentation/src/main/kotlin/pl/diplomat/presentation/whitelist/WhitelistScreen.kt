@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -63,6 +64,7 @@ import pl.diplomat.presentation.R
 @Composable
 fun WhitelistRoute(
     viewModel: WhitelistViewModel,
+    onBack: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -92,6 +94,7 @@ fun WhitelistRoute(
     WhitelistScreen(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
         onAddClick = viewModel::openAddEditor,
         onEditClick = viewModel::openEditEditor,
         onDeleteClick = viewModel::removeContact,
@@ -113,6 +116,7 @@ fun WhitelistRoute(
 fun WhitelistScreen(
     uiState: WhitelistUiState,
     snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
     onAddClick: () -> Unit,
     onEditClick: (WhitelistedContact) -> Unit,
     onDeleteClick: (Long) -> Unit,
@@ -125,7 +129,17 @@ fun WhitelistScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.whitelist_title)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.whitelist_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back),
+                        )
+                    }
+                },
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {

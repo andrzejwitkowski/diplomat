@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="visual_placeholders_photo">
+        <item>photo</item>
+        <item>image</item>
+        <item>picture</item>
+        <item>picture message</item>
+        <item>mms</item>
+        <item>multimedia message</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_gif">
+        <item>gif</item>
+        <item>animated gif</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_sticker">
+        <item>sticker</item>
+    </string-array>
+
+    <string-array name="visual_placeholders_video">
+        <item>video</item>
+    </string-array>
+</resources>

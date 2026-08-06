@@ -1,0 +1,27 @@
+package pl.diplomat.infrastructure.notification
+
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import kotlinx.coroutines.launch
+import pl.diplomat.infrastructure.DiplomatServiceLocator
+
+class DiplomatNotificationListenerService : NotificationListenerService() {
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        val packageName = sbn.packageName
+        if (!NotificationParser.isSupportedPackage(packageName)) return
+
+        val locator = application as? DiplomatServiceLocator ?: return
+        val parsed = locator.notificationParser.parse(
+            packageName = packageName,
+            extras = sbn.notification.extras,
+            postedAtMillis = sbn.postTime,
+            notificationKey = sbn.key,
+        ) ?: return
+
+        val raw = locator.notificationParser.toRaw(parsed)
+        locator.applicationScope.launch {
+            locator.processIncomingMessage(raw)
+        }
+    }
+}
