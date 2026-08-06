@@ -5,7 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import pl.diplomat.domain.model.PhoneNumber
-import pl.diplomat.domain.model.normalizeDisplayName
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.domain.port.AvatarStoragePort
 import pl.diplomat.domain.port.DeviceContact
 import pl.diplomat.domain.port.SystemContactsPort
@@ -16,6 +16,7 @@ import java.util.UUID
 
 class AndroidSystemContactsAdapter(
     private val contentResolver: ContentResolver,
+    private val normalization: NormalizationService,
 ) : SystemContactsPort {
 
     override suspend fun lookupContact(lookupUri: String): DeviceContact? = withContext(Dispatchers.IO) {
@@ -37,7 +38,7 @@ class AndroidSystemContactsAdapter(
             val phoneNumber = cursor.getString(1) ?: return@withContext null
             val photoUri = cursor.getString(2) ?: cursor.getString(3)
             DeviceContact(
-                displayName = displayName.normalizeDisplayName(),
+                displayName = normalization.normalizeDisplayName(displayName).value,
                 phoneNumber = PhoneNumber(phoneNumber),
                 avatarUri = photoUri,
             )
@@ -46,7 +47,7 @@ class AndroidSystemContactsAdapter(
 
     override suspend fun findPhoneNumbersByDisplayName(displayName: String): List<PhoneNumber> =
         withContext(Dispatchers.IO) {
-            val normalizedName = displayName.normalizeDisplayName()
+            val normalizedName = normalization.normalizeDisplayName(displayName).value
             if (normalizedName.isBlank()) return@withContext emptyList()
 
             contentResolver.query(

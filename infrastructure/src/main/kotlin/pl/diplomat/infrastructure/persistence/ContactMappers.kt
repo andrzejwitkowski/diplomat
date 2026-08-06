@@ -2,8 +2,7 @@ package pl.diplomat.infrastructure.persistence
 
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
-import pl.diplomat.domain.model.matchKey
-import pl.diplomat.domain.model.normalizeDisplayName
+import pl.diplomat.domain.normalization.NormalizationService
 
 internal fun WhitelistedContactEntity.toDomain(): WhitelistedContact =
     WhitelistedContact(
@@ -13,12 +12,12 @@ internal fun WhitelistedContactEntity.toDomain(): WhitelistedContact =
         avatarUri = avatarUri,
     )
 
-internal fun WhitelistedContact.toEntity(): WhitelistedContactEntity =
+internal fun WhitelistedContact.toEntity(normalization: NormalizationService): WhitelistedContactEntity =
     WhitelistedContactEntity(
         id = id,
-        displayName = displayName.normalizeDisplayName(),
+        displayName = normalization.normalizeDisplayName(displayName).value,
         phoneNumber = phoneNumber.value,
-        normalizedPhoneNumber = phoneNumber.normalized(),
-        phoneMatchKey = phoneNumber.matchKey(),
+        normalizedPhoneNumber = normalization.normalizePhone(phoneNumber.value).normalized,
+        phoneMatchKey = normalization.normalizePhone(phoneNumber.value).matchKey,
         avatarUri = avatarUri,
     )

@@ -2,6 +2,7 @@ package pl.diplomat.infrastructure.persistence
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import pl.diplomat.domain.normalization.NormalizationService
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -92,8 +93,8 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         db.query("SELECT id, phoneNumber FROM whitelisted_contacts").use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(0)
-                val digits = cursor.getString(1).filter { it.isDigit() }
-                val matchKey = if (digits.length >= 9) digits.takeLast(9) else digits
+                val phone = cursor.getString(1)
+                val matchKey = NormalizationService.default.normalizePhone(phone).matchKey
                 db.execSQL(
                     "UPDATE whitelisted_contacts SET phoneMatchKey = ? WHERE id = ?",
                     arrayOf(matchKey, id),

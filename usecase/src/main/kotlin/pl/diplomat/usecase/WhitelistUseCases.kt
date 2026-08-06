@@ -2,7 +2,7 @@ package pl.diplomat.usecase
 
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
-import pl.diplomat.domain.model.normalizeDisplayName
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.domain.port.ContactRepositoryPort
 import kotlinx.coroutines.flow.Flow
 
@@ -14,13 +14,14 @@ class GetWhitelistedContactsUseCase(
 
 class AddContactToWhitelistUseCase(
     private val repository: ContactRepositoryPort,
+    private val normalization: NormalizationService,
 ) {
     suspend operator fun invoke(
         displayName: String,
         phoneNumber: PhoneNumber,
         avatarUri: String? = null,
     ): Long {
-        val trimmedDisplayName = displayName.normalizeDisplayName()
+        val trimmedDisplayName = normalization.normalizeDisplayName(displayName).value
         require(trimmedDisplayName.isNotBlank()) { "Display name cannot be blank" }
 
         val existing = repository.findByPhoneNumber(phoneNumber)

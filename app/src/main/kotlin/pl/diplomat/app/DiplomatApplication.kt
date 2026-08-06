@@ -23,6 +23,7 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_4_5
 import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.persistence.MIGRATION_6_7
 import pl.diplomat.infrastructure.persistence.MIGRATION_7_8
+import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -68,17 +69,19 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         IncomingMessageNotifier.ensureChannel(this)
         incomingMessageNotifier = IncomingMessageNotifier(this)
 
+        val normalization = NormalizationService.default
+
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
 
-        val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao())
+        val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao(), normalization)
         val messageRepository = RoomMessageRepositoryAdapter(
             messageDao = database.incomingMessageDao(),
             contactDao = database.whitelistedContactDao(),
         )
 
-        val systemContacts = AndroidSystemContactsAdapter(contentResolver)
+        val systemContacts = AndroidSystemContactsAdapter(contentResolver, normalization)
         val avatarStorage = LocalAvatarStorageAdapter(this)
 
         processIncomingMessage = ProcessIncomingMessageUseCase(
@@ -94,7 +97,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
 
         whitelistViewModel = WhitelistViewModel(
             getWhitelistedContacts = GetWhitelistedContactsUseCase(contactRepository),
-            addContact = AddContactToWhitelistUseCase(contactRepository),
+            addContact = AddContactToWhitelistUseCase(contactRepository, normalization),
             updateContact = UpdateWhitelistedContactUseCase(contactRepository),
             removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(contactRepository),
             systemContacts = systemContacts,
