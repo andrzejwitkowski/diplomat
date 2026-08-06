@@ -1,8 +1,6 @@
 package pl.diplomat.usecase
 
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import pl.diplomat.domain.model.MessageContent
@@ -10,9 +8,12 @@ import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.VisualMediaKind
-import pl.diplomat.domain.model.visualKind
+import pl.diplomat.domain.testsupport.TestConstants
 import pl.diplomat.usecase.testsupport.InMemoryContactRepository
 import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
+import pl.diplomat.usecase.testsupport.MessageRepositoryAssertion
+import pl.diplomat.usecase.testsupport.ProcessResultAssertion
+import pl.diplomat.usecase.testsupport.aRawIncomingMessage
 
 class ProcessIncomingMessageUseCaseTest {
 
@@ -30,119 +31,119 @@ class ProcessIncomingMessageUseCaseTest {
     @Test
     fun `rejects message from non-whitelisted sender`() = runTest {
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "+48123456789",
-                content = MessageContent.TextOnly("Hello"),
-                timestamp = 1_000L,
-                sourceApp = MessageSourceApp.SMS,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_HELLO)
+                .withTimestamp(TestConstants.TIMESTAMP_1)
+                .build(),
         )
 
-        assertEquals(ProcessIncomingMessageResult.RejectedNotWhitelisted, result)
-        assertTrue(messageRepository.snapshot().isEmpty())
+        ProcessResultAssertion.assertThat(result).isRejectedNotWhitelisted()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).isEmpty()
     }
 
     @Test
     fun `saves pending message for whitelisted sender with longer text`() = runTest {
-        contactRepository.add("Alice", PhoneNumber("+48 123 456 789"))
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "+48123456789",
-                content = MessageContent.TextOnly("Can we meet tomorrow afternoon?"),
-                timestamp = 2_000L,
-                sourceApp = MessageSourceApp.WHATSAPP,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .build(),
         )
 
-        val saved = (result as ProcessIncomingMessageResult.Saved).message
-        assertEquals(MessageStatus.PENDING, saved.status)
-        assertEquals(MessageSourceApp.WHATSAPP, saved.sourceApp)
-        assertEquals(1, messageRepository.snapshot().size)
+        ProcessResultAssertion.assertThat(result)
+            .isSaved {
+                hasStatus(MessageStatus.PENDING)
+                hasSourceApp(MessageSourceApp.WHATSAPP)
+            }
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
     }
 
     @Test
     fun `classifies short message without question as one-liner`() = runTest {
-        contactRepository.add("Bob", PhoneNumber("555-0100"))
+        contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "5550100",
-                content = MessageContent.TextOnly("OK"),
-                timestamp = 3_000L,
-                sourceApp = MessageSourceApp.SMS,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.BOB_PHONE_NORMALIZED)
+                .withText(TestConstants.TEXT_OK)
+                .withTimestamp(TestConstants.TIMESTAMP_3)
+                .build(),
         )
 
-        val saved = (result as ProcessIncomingMessageResult.Saved).message
-        assertEquals(MessageStatus.IGNORED_CONFIRMATION, saved.status)
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.IGNORED_CONFIRMATION) }
     }
 
     @Test
     fun `does not classify question as one-liner even when short`() = runTest {
-        contactRepository.add("Bob", PhoneNumber("555-0100"))
+        contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "5550100",
-                content = MessageContent.TextOnly("Ready?"),
-                timestamp = 4_000L,
-                sourceApp = MessageSourceApp.SMS,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.BOB_PHONE_NORMALIZED)
+                .withText(TestConstants.TEXT_READY)
+                .withTimestamp(TestConstants.TIMESTAMP_4)
+                .build(),
         )
 
-        val saved = (result as ProcessIncomingMessageResult.Saved).message
-        assertEquals(MessageStatus.PENDING, saved.status)
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.PENDING) }
     }
 
     @Test
     fun `visual only message is always pending`() = runTest {
-        contactRepository.add("Bob", PhoneNumber("555-0100"))
+        contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "5550100",
-                content = MessageContent.VisualOnly(VisualMediaKind.GIF),
-                timestamp = 5_000L,
-                sourceApp = MessageSourceApp.WHATSAPP,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.BOB_PHONE_NORMALIZED)
+                .withContent(MessageContent.VisualOnly(VisualMediaKind.GIF))
+                .withTimestamp(TestConstants.TIMESTAMP_5)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .build(),
         )
 
-        val saved = (result as ProcessIncomingMessageResult.Saved).message
-        assertEquals(MessageStatus.PENDING, saved.status)
-        assertEquals(VisualMediaKind.GIF, saved.content.visualKind())
+        ProcessResultAssertion.assertThat(result)
+            .isSaved {
+                hasStatus(MessageStatus.PENDING)
+                hasVisualKind(VisualMediaKind.GIF)
+            }
     }
 
     @Test
     fun `visual with short caption can still be one-liner`() = runTest {
-        contactRepository.add("Bob", PhoneNumber("555-0100"))
+        contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "5550100",
-                content = MessageContent.VisualWithText(VisualMediaKind.PHOTO, "OK"),
-                timestamp = 6_000L,
-                sourceApp = MessageSourceApp.WHATSAPP,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.BOB_PHONE_NORMALIZED)
+                .withContent(MessageContent.VisualWithText(VisualMediaKind.PHOTO, TestConstants.TEXT_OK))
+                .withTimestamp(TestConstants.TIMESTAMP_6)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .build(),
         )
 
-        val saved = (result as ProcessIncomingMessageResult.Saved).message
-        assertEquals(MessageStatus.IGNORED_CONFIRMATION, saved.status)
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.IGNORED_CONFIRMATION) }
     }
 
     @Test
     fun `rejects invalid phone number`() = runTest {
-        contactRepository.add("Alice", PhoneNumber("+48123456789"))
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
 
         val result = useCase(
-            RawIncomingMessage(
-                senderPhone = "   ",
-                content = MessageContent.TextOnly("Hello"),
-                timestamp = 7_000L,
-                sourceApp = MessageSourceApp.SMS,
-            ),
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.INVALID_PHONE)
+                .withText(TestConstants.TEXT_HELLO)
+                .withTimestamp(TestConstants.TIMESTAMP_7)
+                .build(),
         )
 
-        assertEquals(ProcessIncomingMessageResult.RejectedNotWhitelisted, result)
+        ProcessResultAssertion.assertThat(result).isRejectedNotWhitelisted()
     }
 }

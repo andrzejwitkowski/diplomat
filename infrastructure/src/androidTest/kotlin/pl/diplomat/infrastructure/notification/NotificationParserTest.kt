@@ -1,200 +1,184 @@
 package pl.diplomat.infrastructure.notification
 
-import android.graphics.Bitmap
-import android.os.Bundle
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.VisualMediaKind
-import pl.diplomat.domain.model.visualKind
+import pl.diplomat.domain.testsupport.TestConstants
 import pl.diplomat.infrastructure.BaseSpec
+import pl.diplomat.infrastructure.testsupport.NotificationTestConstants
+import pl.diplomat.infrastructure.testsupport.ParsedNotificationAssertion
+import pl.diplomat.infrastructure.testsupport.notificationExtras
 
 class NotificationParserTest : BaseSpec() {
 
     @Test
     fun parsesSmsNotification() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "+48 123 456 789")
-            putCharSequence("android.text", "Test SMS body")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.google.android.apps.messaging",
-            extras = extras,
-            postedAtMillis = 1_000L,
+            packageName = NotificationTestConstants.SMS_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.SMS_SENDER)
+                .withText(TestConstants.TEXT_SMS_BODY)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_SMS,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageSourceApp.SMS, parsed!!.sourceApp)
-        assertEquals(MessageContent.TextOnly("Test SMS body"), parsed.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasSourceApp(MessageSourceApp.SMS)
+            .hasContent(MessageContent.TextOnly(TestConstants.TEXT_SMS_BODY))
     }
 
     @Test
     fun parsesWhatsAppNotification() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "WhatsApp message")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_000L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(TestConstants.TEXT_WHATSAPP)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageSourceApp.WHATSAPP, parsed!!.sourceApp)
-        assertEquals("Alice", parsed.senderPhone)
-        assertEquals(MessageContent.TextOnly("WhatsApp message"), parsed.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasSourceApp(MessageSourceApp.WHATSAPP)
+            .hasSenderPhone(NotificationTestConstants.WHATSAPP_SENDER)
+            .hasContent(MessageContent.TextOnly(TestConstants.TEXT_WHATSAPP))
     }
 
     @Test
     fun parsesPhotoNotificationFromPlaceholderText() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "📷 Photo")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_500L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_PHOTO)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_PHOTO,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageContent.VisualOnly(VisualMediaKind.PHOTO), parsed!!.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.PHOTO)
     }
 
     @Test
     fun parsesGifNotificationFromPlaceholderText() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "GIF")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_550L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_GIF)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_GIF,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageContent.VisualOnly(VisualMediaKind.GIF), parsed!!.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.GIF)
     }
 
     @Test
     fun parsesGifNotificationFromEmojiPrefix() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "🎬 GIF")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_560L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_GIF_EMOJI)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_GIF_EMOJI,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageContent.VisualOnly(VisualMediaKind.GIF), parsed!!.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.GIF)
     }
 
     @Test
     fun parsesStickerNotification() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "Sticker")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_570L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_STICKER)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_STICKER,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageContent.VisualOnly(VisualMediaKind.STICKER), parsed!!.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.STICKER)
     }
 
     @Test
     fun parsesVideoNotification() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "Video")
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_580L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_VIDEO)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_VIDEO,
         )
 
-        assertNotNull(parsed)
-        assertEquals(MessageContent.VisualOnly(VisualMediaKind.VIDEO), parsed!!.content)
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.VIDEO)
     }
 
     @Test
     fun parsesImageWithCaptionNotification() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "Alice")
-            putCharSequence("android.text", "Look at this sunset")
-            putParcelable("android.picture", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
-            putString("android.conversationTitle", "Alice")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.whatsapp",
-            extras = extras,
-            postedAtMillis = 2_600L,
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(TestConstants.TEXT_SUNSET_CAPTION)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withPicture()
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_IMAGE_CAPTION,
         )
 
-        assertNotNull(parsed)
-        assertEquals(
-            MessageContent.VisualWithText(VisualMediaKind.PHOTO, "Look at this sunset"),
-            parsed!!.content,
-        )
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasContent(
+                MessageContent.VisualWithText(VisualMediaKind.PHOTO, TestConstants.TEXT_SUNSET_CAPTION),
+            )
     }
 
     @Test
     fun parsesImageOnlyNotificationFromPictureExtra() {
-        val extras = Bundle().apply {
-            putCharSequence("android.title", "+48 123 456 789")
-            putParcelable("android.picture", Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.google.android.apps.messaging",
-            extras = extras,
-            postedAtMillis = 2_700L,
+            packageName = NotificationTestConstants.SMS_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.SMS_SENDER)
+                .withPicture()
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_MMS_PICTURE,
         )
 
-        assertNotNull(parsed)
-        assertTrue(parsed!!.content is MessageContent.VisualOnly)
-        assertEquals(VisualMediaKind.PHOTO, parsed.content.visualKind())
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasVisualOnly(VisualMediaKind.PHOTO)
     }
 
     @Test
     fun ignoresUnsupportedPackage() {
-        val extras = Bundle().apply {
-            putCharSequence("android.text", "Ignored")
-        }
-
         val parsed = NotificationParser.parse(
-            packageName = "com.example.unknown",
-            extras = extras,
-            postedAtMillis = 3_000L,
+            packageName = NotificationTestConstants.UNKNOWN_PACKAGE,
+            extras = notificationExtras()
+                .withText(NotificationTestConstants.NOTIFICATION_TEXT_IGNORED)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_IGNORED,
         )
 
-        assertNull(parsed)
+        ParsedNotificationAssertion.assertThat(parsed).isNull()
     }
 }

@@ -2,137 +2,124 @@ package pl.diplomat.infrastructure.persistence
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import pl.diplomat.domain.model.IncomingMessage
-import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageContentType
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.VisualMediaKind
-import pl.diplomat.domain.model.WhitelistedContact
-import pl.diplomat.domain.model.bodyText
-import pl.diplomat.domain.model.visualKind
+import pl.diplomat.domain.testsupport.MessageAssertion
+import pl.diplomat.domain.testsupport.TestConstants
+import pl.diplomat.domain.testsupport.WhitelistedContactAssertion
+import pl.diplomat.domain.testsupport.anIncomingMessage
+import pl.diplomat.domain.testsupport.aWhitelistedContact
+import pl.diplomat.infrastructure.testsupport.ConversationRepositoryAssertion
+import pl.diplomat.infrastructure.testsupport.MessageEntityAssertion
+import pl.diplomat.infrastructure.testsupport.MessageHistoryAssertion
 
 class RoomMessageRepositoryIntegrationTest : BaseRoomIntegrationSpec() {
 
     @Test
     fun saveAndObserveActiveConversations() = runTest {
-        val contactId = contactRepository.add("Alice", PhoneNumber("+48123456789"))
+        val contactId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         val messageId = messageRepository.save(
-            IncomingMessage(
-                id = 0,
-                contactId = contactId,
-                content = MessageContent.TextOnly("Hello Diplomat"),
-                timestamp = 1_700_000_000_000L,
-                sourceApp = MessageSourceApp.SMS,
-                status = MessageStatus.PENDING,
-            ),
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withText(TestConstants.TEXT_HELLO_DIPLOMAT)
+                .withTimestamp(TestConstants.TIMESTAMP_ROOM)
+                .build(),
         )
 
-        assertTrue(messageId > 0)
-
         val conversations = messageRepository.observeActiveConversations().first()
-        assertEquals(1, conversations.size)
-        assertEquals("Alice", conversations.first().contact.displayName)
-        assertEquals("Hello Diplomat", conversations.first().lastMessage.content.bodyText())
+
+        ConversationRepositoryAssertion.assertThat(conversations)
+            .savedMessageIdIsPositive(messageId)
+            .hasSize(1)
+            .firstContactHasDisplayName(TestConstants.ALICE_NAME)
+            .first { hasTextBody(TestConstants.TEXT_HELLO_DIPLOMAT) }
     }
 
     @Test
     fun mapperRoundTripPreservesTextMessage() {
-        val domain = IncomingMessage(
-            id = 42,
-            contactId = 7,
-            content = MessageContent.TextOnly("Mapped text"),
-            timestamp = 99L,
-            sourceApp = MessageSourceApp.WHATSAPP,
-            status = MessageStatus.IGNORED_CONFIRMATION,
-        )
+        val domain = anIncomingMessage()
+            .withId(TestConstants.MESSAGE_ID)
+            .withText(TestConstants.TEXT_MAPPED)
+            .withTimestamp(TestConstants.TIMESTAMP_99)
+            .withSourceApp(MessageSourceApp.WHATSAPP)
+            .withStatus(MessageStatus.IGNORED_CONFIRMATION)
+            .build()
 
-        val roundTripped = domain.toEntity().toDomain()
-
-        assertEquals(domain, roundTripped)
+        MessageAssertion.assertThat(domain.toEntity().toDomain()).isEqualTo(domain)
     }
 
     @Test
     fun mapperRoundTripPreservesGifMessage() {
-        val domain = IncomingMessage(
-            id = 43,
-            contactId = 7,
-            content = MessageContent.VisualOnly(VisualMediaKind.GIF),
-            timestamp = 100L,
-            sourceApp = MessageSourceApp.WHATSAPP,
-            status = MessageStatus.PENDING,
-        )
+        val domain = anIncomingMessage()
+            .withId(43)
+            .withVisualOnly(VisualMediaKind.GIF)
+            .withTimestamp(TestConstants.TIMESTAMP_100_MEDIA)
+            .withSourceApp(MessageSourceApp.WHATSAPP)
+            .build()
 
         val entity = domain.toEntity()
-        assertEquals(MessageContentType.IMAGE.name, entity.contentType)
-        assertEquals(VisualMediaKind.GIF.name, entity.mediaKind)
-        assertEquals("", entity.text)
-        assertEquals(domain, entity.toDomain())
+
+        MessageEntityAssertion.assertThat(entity)
+            .hasContentType(MessageContentType.IMAGE)
+            .hasMediaKind(VisualMediaKind.GIF)
+            .hasText("")
+
+        MessageAssertion.assertThat(entity.toDomain()).isEqualTo(domain)
     }
 
     @Test
     fun mapperRoundTripPreservesImageWithTextMessage() {
-        val domain = IncomingMessage(
-            id = 44,
-            contactId = 7,
-            content = MessageContent.VisualWithText(VisualMediaKind.PHOTO, "Sunset"),
-            timestamp = 101L,
-            sourceApp = MessageSourceApp.SMS,
-            status = MessageStatus.PENDING,
-        )
+        val domain = anIncomingMessage()
+            .withId(44)
+            .withVisualAndText(VisualMediaKind.PHOTO, TestConstants.TEXT_SUNSET)
+            .withTimestamp(TestConstants.TIMESTAMP_101)
+            .build()
 
-        val roundTripped = domain.toEntity().toDomain()
-
-        assertEquals(domain, roundTripped)
+        MessageAssertion.assertThat(domain.toEntity().toDomain()).isEqualTo(domain)
     }
 
     @Test
     fun contactMapperRoundTrip() {
-        val domain = WhitelistedContact(
-            id = 3,
-            displayName = "Bob",
-            phoneNumber = PhoneNumber("+48 999 888 777"),
-            avatarUri = "file:///avatar.jpg",
-        )
+        val domain = aWhitelistedContact()
+            .withId(3)
+            .withDisplayName(TestConstants.BOB_NAME)
+            .withPhoneNumber(TestConstants.BOB_PHONE_FORMATTED)
+            .build()
 
-        val roundTripped = domain.toEntity().toDomain()
-
-        assertEquals(domain, roundTripped)
+        WhitelistedContactAssertion.assertThat(domain.toEntity().toDomain()).isEqualTo(domain)
     }
 
     @Test
     fun findMessagesByContactIdReturnsHistory() = runTest {
-        val contactId = contactRepository.add("Carol", PhoneNumber("5551234"))
+        val contactId = contactRepository.add(TestConstants.CAROL_NAME, PhoneNumber(TestConstants.CAROL_PHONE))
         messageRepository.save(
-            IncomingMessage(
-                0,
-                contactId,
-                MessageContent.TextOnly("Older"),
-                100L,
-                MessageSourceApp.SMS,
-                MessageStatus.REPLIED,
-            ),
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withText(TestConstants.TEXT_OLDER)
+                .withTimestamp(TestConstants.TIMESTAMP_100)
+                .withStatus(MessageStatus.REPLIED)
+                .build(),
         )
         messageRepository.save(
-            IncomingMessage(
-                0,
-                contactId,
-                MessageContent.VisualWithText(VisualMediaKind.GIF, "Newer"),
-                200L,
-                MessageSourceApp.SMS,
-                MessageStatus.PENDING,
-            ),
+            anIncomingMessage()
+                .withContactId(contactId)
+                .withVisualAndText(VisualMediaKind.GIF, TestConstants.TEXT_NEWER)
+                .withTimestamp(TestConstants.TIMESTAMP_200)
+                .build(),
         )
 
         val history = messageRepository.findMessagesByContactId(contactId)
 
-        assertEquals(2, history.size)
-        assertEquals("Newer", history.first().content.bodyText())
-        assertEquals(VisualMediaKind.GIF, history.first().content.visualKind())
-        assertEquals(MessageContentType.IMAGE_WITH_TEXT, history.first().content.type)
+        MessageHistoryAssertion.assertThat(history)
+            .hasSize(2)
+            .first {
+                hasTextBody(TestConstants.TEXT_NEWER)
+                hasVisualKind(VisualMediaKind.GIF)
+                hasContent(MessageContent.VisualWithText(VisualMediaKind.GIF, TestConstants.TEXT_NEWER))
+            }
     }
 }

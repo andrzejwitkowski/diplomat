@@ -2,17 +2,15 @@ package pl.diplomat.usecase
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import pl.diplomat.domain.model.IncomingMessage
-import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.VisualMediaKind
-import pl.diplomat.domain.model.bodyText
-import pl.diplomat.domain.model.visualKind
+import pl.diplomat.domain.testsupport.TestConstants
+import pl.diplomat.domain.testsupport.anIncomingMessage
+import pl.diplomat.usecase.testsupport.ConversationListAssertion
 import pl.diplomat.usecase.testsupport.InMemoryContactRepository
 import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 
@@ -31,44 +29,38 @@ class GetActiveConversationsUseCaseTest {
 
     @Test
     fun `returns latest message per contact ordered by timestamp`() = runTest {
-        val aliceId = contactRepository.add("Alice", PhoneNumber("+48111111111"))
-        val bobId = contactRepository.add("Bob", PhoneNumber("+48222222222"))
+        val aliceId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_ALT))
+        val bobId = contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE_ALT))
 
         messageRepository.save(
-            IncomingMessage(
-                0,
-                aliceId,
-                MessageContent.TextOnly("First"),
-                100L,
-                MessageSourceApp.SMS,
-                MessageStatus.PENDING,
-            ),
+            anIncomingMessage()
+                .withContactId(aliceId)
+                .withText(TestConstants.TEXT_FIRST)
+                .withTimestamp(TestConstants.TIMESTAMP_100)
+                .build(),
         )
         messageRepository.save(
-            IncomingMessage(
-                0,
-                aliceId,
-                MessageContent.TextOnly("Latest from Alice"),
-                300L,
-                MessageSourceApp.SMS,
-                MessageStatus.PENDING,
-            ),
+            anIncomingMessage()
+                .withContactId(aliceId)
+                .withText(TestConstants.TEXT_LATEST_ALICE)
+                .withTimestamp(TestConstants.TIMESTAMP_300)
+                .build(),
         )
         messageRepository.save(
-            IncomingMessage(
-                0,
-                bobId,
-                MessageContent.VisualOnly(VisualMediaKind.GIF),
-                200L,
-                MessageSourceApp.WHATSAPP,
-                MessageStatus.REPLIED,
-            ),
+            anIncomingMessage()
+                .withContactId(bobId)
+                .withVisualOnly(VisualMediaKind.GIF)
+                .withTimestamp(TestConstants.TIMESTAMP_200)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .withStatus(MessageStatus.REPLIED)
+                .build(),
         )
 
         val conversations = useCase().first()
 
-        assertEquals(2, conversations.size)
-        assertEquals("Latest from Alice", conversations[0].lastMessage.content.bodyText())
-        assertEquals(VisualMediaKind.GIF, conversations[1].lastMessage.content.visualKind())
+        ConversationListAssertion.assertThat(conversations)
+            .hasSize(2)
+            .firstMessageHasTextBody(TestConstants.TEXT_LATEST_ALICE)
+            .lastMessageHasVisualKind(VisualMediaKind.GIF)
     }
 }
