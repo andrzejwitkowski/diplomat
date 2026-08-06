@@ -1,7 +1,6 @@
 package pl.diplomat.usecase
 
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
 import org.junit.Test
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
@@ -9,24 +8,11 @@ import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.domain.testsupport.TestConstants
-import pl.diplomat.usecase.testsupport.InMemoryContactRepository
-import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 import pl.diplomat.usecase.testsupport.MessageRepositoryAssertion
 import pl.diplomat.usecase.testsupport.ProcessResultAssertion
 import pl.diplomat.usecase.testsupport.aRawIncomingMessage
 
-class ProcessIncomingMessageUseCaseTest {
-
-    private lateinit var contactRepository: InMemoryContactRepository
-    private lateinit var messageRepository: InMemoryMessageRepository
-    private lateinit var useCase: ProcessIncomingMessageUseCase
-
-    @Before
-    fun setUp() {
-        contactRepository = InMemoryContactRepository()
-        messageRepository = InMemoryMessageRepository(contactRepository)
-        useCase = ProcessIncomingMessageUseCase(contactRepository, messageRepository)
-    }
+class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
 
     @Test
     fun `rejects message from non-whitelisted sender`() = runTest {

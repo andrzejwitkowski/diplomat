@@ -2,7 +2,6 @@ package pl.diplomat.usecase
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
 import org.junit.Test
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
@@ -11,21 +10,8 @@ import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.domain.testsupport.TestConstants
 import pl.diplomat.domain.testsupport.anIncomingMessage
 import pl.diplomat.usecase.testsupport.ConversationListAssertion
-import pl.diplomat.usecase.testsupport.InMemoryContactRepository
-import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 
-class GetActiveConversationsUseCaseTest {
-
-    private lateinit var contactRepository: InMemoryContactRepository
-    private lateinit var messageRepository: InMemoryMessageRepository
-    private lateinit var useCase: GetActiveConversationsUseCase
-
-    @Before
-    fun setUp() {
-        contactRepository = InMemoryContactRepository()
-        messageRepository = InMemoryMessageRepository(contactRepository)
-        useCase = GetActiveConversationsUseCase(messageRepository)
-    }
+class GetActiveConversationsUseCaseTest : BaseGetActiveConversationsSpec() {
 
     @Test
     fun `returns latest message per contact ordered by timestamp`() = runTest {
