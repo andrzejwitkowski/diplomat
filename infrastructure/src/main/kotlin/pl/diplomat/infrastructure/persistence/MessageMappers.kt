@@ -5,39 +5,61 @@ import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageContentType
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
+import pl.diplomat.domain.model.VisualMediaKind
 
 internal fun IncomingMessageEntity.toDomain(): IncomingMessage =
     IncomingMessage(
         id = id,
         contactId = contactId,
-        content = toMessageContent(contentType, text),
+        content = toMessageContent(contentType, mediaKind, text),
         timestamp = timestamp,
         sourceApp = MessageSourceApp.valueOf(sourceApp),
         status = MessageStatus.valueOf(status),
     )
 
 internal fun IncomingMessage.toEntity(): IncomingMessageEntity {
-    val (storedType, storedText) = content.toStorage()
+    val storage = content.toStorage()
     return IncomingMessageEntity(
         id = id,
         contactId = contactId,
-        text = storedText,
-        contentType = storedType,
+        text = storage.text,
+        contentType = storage.contentType,
+        mediaKind = storage.mediaKind,
         timestamp = timestamp,
         sourceApp = sourceApp.name,
         status = status.name,
     )
 }
 
-private fun toMessageContent(contentType: String, text: String): MessageContent =
-    when (MessageContentType.valueOf(contentType)) {
-        MessageContentType.TEXT -> MessageContent.TextOnly(text)
-        MessageContentType.IMAGE -> MessageContent.ImageOnly
-        MessageContentType.IMAGE_WITH_TEXT -> MessageContent.ImageWithText(text)
-    }
+private data class MessageStorage(
+    val contentType: String,
+    val mediaKind: String,
+    val text: String,
+)
 
-private fun MessageContent.toStorage(): Pair<String, String> = when (this) {
-    is MessageContent.TextOnly -> MessageContentType.TEXT.name to body
-    is MessageContent.ImageOnly -> MessageContentType.IMAGE.name to ""
-    is MessageContent.ImageWithText -> MessageContentType.IMAGE_WITH_TEXT.name to body
+private fun toMessageContent(contentType: String, mediaKind: String, text: String): MessageContent {
+    val kind = VisualMediaKind.valueOf(mediaKind)
+    return when (MessageContentType.valueOf(contentType)) {
+        MessageContentType.TEXT -> MessageContent.TextOnly(text)
+        MessageContentType.IMAGE -> MessageContent.VisualOnly(kind)
+        MessageContentType.IMAGE_WITH_TEXT -> MessageContent.VisualWithText(kind, text)
+    }
+}
+
+private fun MessageContent.toStorage(): MessageStorage = when (this) {
+    is MessageContent.TextOnly -> MessageStorage(
+        contentType = MessageContentType.TEXT.name,
+        mediaKind = VisualMediaKind.PHOTO.name,
+        text = body,
+    )
+    is MessageContent.VisualOnly -> MessageStorage(
+        contentType = MessageContentType.IMAGE.name,
+        mediaKind = kind.name,
+        text = "",
+    )
+    is MessageContent.VisualWithText -> MessageStorage(
+        contentType = MessageContentType.IMAGE_WITH_TEXT.name,
+        mediaKind = kind.name,
+        text = body,
+    )
 }

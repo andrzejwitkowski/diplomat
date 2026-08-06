@@ -25,6 +25,12 @@
     <string name="status_replied">Replied</string>
     <string name="message_preview_image">Photo</string>
     <string name="message_preview_image_with_text">Photo: %1$s</string>
+    <string name="message_preview_gif">GIF</string>
+    <string name="message_preview_gif_with_text">GIF: %1$s</string>
+    <string name="message_preview_sticker">Sticker</string>
+    <string name="message_preview_sticker_with_text">Sticker: %1$s</string>
+    <string name="message_preview_video">Video</string>
+    <string name="message_preview_video_with_text">Video: %1$s</string>
     <string name="conversation_detail_title">Conversation</string>
     <string name="back">Back</string>
 </resources>

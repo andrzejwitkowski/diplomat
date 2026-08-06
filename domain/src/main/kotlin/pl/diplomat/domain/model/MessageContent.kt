@@ -6,6 +6,13 @@ enum class MessageContentType {
     IMAGE_WITH_TEXT,
 }
 
+enum class VisualMediaKind {
+    PHOTO,
+    GIF,
+    STICKER,
+    VIDEO,
+}
+
 sealed interface MessageContent {
     val type: MessageContentType
 
@@ -17,11 +24,11 @@ sealed interface MessageContent {
         override val type = MessageContentType.TEXT
     }
 
-    data object ImageOnly : MessageContent {
+    data class VisualOnly(val kind: VisualMediaKind) : MessageContent {
         override val type = MessageContentType.IMAGE
     }
 
-    data class ImageWithText(val body: String) : MessageContent {
+    data class VisualWithText(val kind: VisualMediaKind, val body: String) : MessageContent {
         init {
             require(body.isNotBlank()) { "Caption cannot be blank" }
         }
@@ -32,6 +39,12 @@ sealed interface MessageContent {
 
 fun MessageContent.bodyText(): String? = when (this) {
     is MessageContent.TextOnly -> body
-    is MessageContent.ImageOnly -> null
-    is MessageContent.ImageWithText -> body
+    is MessageContent.VisualOnly -> null
+    is MessageContent.VisualWithText -> body
+}
+
+fun MessageContent.visualKind(): VisualMediaKind? = when (this) {
+    is MessageContent.TextOnly -> null
+    is MessageContent.VisualOnly -> kind
+    is MessageContent.VisualWithText -> kind
 }

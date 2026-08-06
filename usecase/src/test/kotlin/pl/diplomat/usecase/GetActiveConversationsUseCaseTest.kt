@@ -10,7 +10,9 @@ import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.domain.model.bodyText
+import pl.diplomat.domain.model.visualKind
 import pl.diplomat.usecase.testsupport.InMemoryContactRepository
 import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 
@@ -56,7 +58,7 @@ class GetActiveConversationsUseCaseTest {
             IncomingMessage(
                 0,
                 bobId,
-                MessageContent.ImageOnly,
+                MessageContent.VisualOnly(VisualMediaKind.GIF),
                 200L,
                 MessageSourceApp.WHATSAPP,
                 MessageStatus.REPLIED,
@@ -67,6 +69,6 @@ class GetActiveConversationsUseCaseTest {
 
         assertEquals(2, conversations.size)
         assertEquals("Latest from Alice", conversations[0].lastMessage.content.bodyText())
-        assertEquals(MessageContent.ImageOnly, conversations[1].lastMessage.content)
+        assertEquals(VisualMediaKind.GIF, conversations[1].lastMessage.content.visualKind())
     }
 }

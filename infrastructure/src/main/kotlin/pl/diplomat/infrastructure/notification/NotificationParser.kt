@@ -3,6 +3,7 @@ package pl.diplomat.infrastructure.notification
 import android.os.Bundle
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
+import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.usecase.RawIncomingMessage
 
 data class ParsedNotification(
@@ -24,16 +25,32 @@ object NotificationParser {
         "com.whatsapp.w4b",
     )
 
-    private val IMAGE_PLACEHOLDER_TEXT = setOf(
-        "photo",
-        "image",
-        "picture",
-        "zdjęcie",
-        "zdjecie",
-        "obraz",
-        "picture message",
-        "mms",
-        "multimedia message",
+    private val VISUAL_PLACEHOLDERS: Map<VisualMediaKind, Set<String>> = mapOf(
+        VisualMediaKind.PHOTO to setOf(
+            "photo",
+            "image",
+            "picture",
+            "zdjęcie",
+            "zdjecie",
+            "obraz",
+            "picture message",
+            "mms",
+            "multimedia message",
+        ),
+        VisualMediaKind.GIF to setOf(
+            "gif",
+            "animated gif",
+            "animowany gif",
+        ),
+        VisualMediaKind.STICKER to setOf(
+            "sticker",
+            "naklejka",
+        ),
+        VisualMediaKind.VIDEO to setOf(
+            "video",
+            "film",
+            "wideo",
+        ),
     )
 
     fun parse(packageName: String, extras: Bundle, postedAtMillis: Long): ParsedNotification? {
@@ -64,22 +81,44 @@ object NotificationParser {
     internal fun resolveContent(text: String, extras: Bundle): MessageContent? {
         val trimmedText = text.trim()
         val hasPicture = hasPictureAttachment(extras)
+        val placeholderKind = detectVisualPlaceholderKind(trimmedText)
 
         return when {
-            hasPicture && trimmedText.isBlank() -> MessageContent.ImageOnly
-            hasPicture && isImagePlaceholder(trimmedText) -> MessageContent.ImageOnly
-            hasPicture -> MessageContent.ImageWithText(trimmedText)
-            trimmedText.isNotBlank() && isImagePlaceholder(trimmedText) -> MessageContent.ImageOnly
+            hasPicture && trimmedText.isBlank() -> MessageContent.VisualOnly(VisualMediaKind.PHOTO)
+            placeholderKind != null && isPlaceholderOnly(trimmedText, placeholderKind) ->
+                MessageContent.VisualOnly(placeholderKind)
+            hasPicture -> MessageContent.VisualWithText(VisualMediaKind.PHOTO, trimmedText)
+            placeholderKind != null -> MessageContent.VisualOnly(placeholderKind)
             trimmedText.isNotBlank() -> MessageContent.TextOnly(trimmedText)
             else -> null
         }
     }
 
-    internal fun isImagePlaceholder(text: String): Boolean {
+    internal fun detectVisualPlaceholderKind(text: String): VisualMediaKind? {
         val normalized = text.trim().lowercase()
-        if (normalized.isBlank()) return false
-        if (normalized.startsWith("📷") || normalized.startsWith("🖼")) return true
-        return IMAGE_PLACEHOLDER_TEXT.any { normalized == it || normalized.endsWith(" $it") }
+        if (normalized.isBlank()) return null
+
+        emojiPrefixKind(normalized)?.let { return it }
+
+        return VISUAL_PLACEHOLDERS.entries.firstOrNull { (_, labels) ->
+            labels.any { label -> normalized == label || normalized.endsWith(" $label") }
+        }?.key
+    }
+
+    internal fun isPlaceholderOnly(text: String, kind: VisualMediaKind): Boolean {
+        val normalized = text.trim().lowercase()
+        if (normalized.isBlank()) return true
+        emojiPrefixKind(normalized)?.let { return it == kind }
+        val labels = VISUAL_PLACEHOLDERS.getValue(kind)
+        return labels.any { label -> normalized == label || normalized.endsWith(" $label") }
+    }
+
+    private fun emojiPrefixKind(normalized: String): VisualMediaKind? = when {
+        normalized.startsWith("📷") || normalized.startsWith("🖼") -> VisualMediaKind.PHOTO
+        normalized.startsWith("🎬") || normalized.startsWith("🎞") -> VisualMediaKind.GIF
+        normalized.contains("gif") -> VisualMediaKind.GIF
+        normalized.startsWith("🎥") -> VisualMediaKind.VIDEO
+        else -> null
     }
 
     private fun resolveSourceApp(packageName: String): MessageSourceApp? = when {

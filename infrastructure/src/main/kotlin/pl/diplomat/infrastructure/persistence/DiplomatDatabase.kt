@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [WhitelistedContactEntity::class, IncomingMessageEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class DiplomatDatabase : RoomDatabase() {

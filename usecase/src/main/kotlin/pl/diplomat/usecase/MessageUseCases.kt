@@ -35,9 +35,9 @@ class ProcessIncomingMessageUseCase(
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
         val status = when (val content = raw.content) {
-            is MessageContent.ImageOnly -> MessageStatus.PENDING
+            is MessageContent.VisualOnly -> MessageStatus.PENDING
             is MessageContent.TextOnly -> classifyText(content.body)
-            is MessageContent.ImageWithText -> classifyText(content.body)
+            is MessageContent.VisualWithText -> classifyText(content.body)
         }
 
         val message = IncomingMessage(

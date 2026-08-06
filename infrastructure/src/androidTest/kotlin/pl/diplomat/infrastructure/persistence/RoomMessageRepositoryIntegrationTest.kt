@@ -19,6 +19,7 @@ import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.domain.model.bodyText
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
@@ -87,11 +88,11 @@ class RoomMessageRepositoryIntegrationTest {
     }
 
     @Test
-    fun mapperRoundTripPreservesImageMessage() {
+    fun mapperRoundTripPreservesGifMessage() {
         val domain = IncomingMessage(
             id = 43,
             contactId = 7,
-            content = MessageContent.ImageOnly,
+            content = MessageContent.VisualOnly(VisualMediaKind.GIF),
             timestamp = 100L,
             sourceApp = MessageSourceApp.WHATSAPP,
             status = MessageStatus.PENDING,
@@ -99,6 +100,7 @@ class RoomMessageRepositoryIntegrationTest {
 
         val entity = domain.toEntity()
         assertEquals(MessageContentType.IMAGE.name, entity.contentType)
+        assertEquals(VisualMediaKind.GIF.name, entity.mediaKind)
         assertEquals("", entity.text)
         assertEquals(domain, entity.toDomain())
     }
@@ -108,7 +110,7 @@ class RoomMessageRepositoryIntegrationTest {
         val domain = IncomingMessage(
             id = 44,
             contactId = 7,
-            content = MessageContent.ImageWithText("Sunset"),
+            content = MessageContent.VisualWithText(VisualMediaKind.PHOTO, "Sunset"),
             timestamp = 101L,
             sourceApp = MessageSourceApp.SMS,
             status = MessageStatus.PENDING,
@@ -150,7 +152,7 @@ class RoomMessageRepositoryIntegrationTest {
             IncomingMessage(
                 0,
                 contactId,
-                MessageContent.ImageWithText("Newer"),
+                MessageContent.VisualWithText(VisualMediaKind.GIF, "Newer"),
                 200L,
                 MessageSourceApp.SMS,
                 MessageStatus.PENDING,
@@ -161,6 +163,7 @@ class RoomMessageRepositoryIntegrationTest {
 
         assertEquals(2, history.size)
         assertEquals("Newer", history.first().content.bodyText())
+        assertEquals(VisualMediaKind.GIF, history.first().content.visualKind())
         assertEquals(MessageContentType.IMAGE_WITH_TEXT, history.first().content.type)
     }
 }

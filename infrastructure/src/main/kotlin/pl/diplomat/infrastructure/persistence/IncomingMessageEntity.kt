@@ -22,6 +22,7 @@ data class IncomingMessageEntity(
     val contactId: Long,
     val text: String,
     val contentType: String,
+    val mediaKind: String,
     val timestamp: Long,
     val sourceApp: String,
     val status: String,

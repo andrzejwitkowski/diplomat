@@ -9,6 +9,8 @@ import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.PhoneNumber
+import pl.diplomat.domain.model.VisualMediaKind
+import pl.diplomat.domain.model.visualKind
 import pl.diplomat.usecase.testsupport.InMemoryContactRepository
 import pl.diplomat.usecase.testsupport.InMemoryMessageRepository
 
@@ -94,13 +96,13 @@ class ProcessIncomingMessageUseCaseTest {
     }
 
     @Test
-    fun `image only message is always pending`() = runTest {
+    fun `visual only message is always pending`() = runTest {
         contactRepository.add("Bob", PhoneNumber("555-0100"))
 
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "5550100",
-                content = MessageContent.ImageOnly,
+                content = MessageContent.VisualOnly(VisualMediaKind.GIF),
                 timestamp = 5_000L,
                 sourceApp = MessageSourceApp.WHATSAPP,
             ),
@@ -108,17 +110,17 @@ class ProcessIncomingMessageUseCaseTest {
 
         val saved = (result as ProcessIncomingMessageResult.Saved).message
         assertEquals(MessageStatus.PENDING, saved.status)
-        assertTrue(saved.content is MessageContent.ImageOnly)
+        assertEquals(VisualMediaKind.GIF, saved.content.visualKind())
     }
 
     @Test
-    fun `image with short caption can still be one-liner`() = runTest {
+    fun `visual with short caption can still be one-liner`() = runTest {
         contactRepository.add("Bob", PhoneNumber("555-0100"))
 
         val result = useCase(
             RawIncomingMessage(
                 senderPhone = "5550100",
-                content = MessageContent.ImageWithText("OK"),
+                content = MessageContent.VisualWithText(VisualMediaKind.PHOTO, "OK"),
                 timestamp = 6_000L,
                 sourceApp = MessageSourceApp.WHATSAPP,
             ),
