@@ -1,5 +1,9 @@
 package pl.diplomat.infrastructure.debug
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -43,5 +47,23 @@ class DevLogTest {
         assertTrue(exported.contains("version=1.1.0"))
         assertTrue(exported.contains("commit=abc123"))
         assertTrue(exported.contains("[TEST] hello"))
+    }
+
+    @Test
+    fun concurrentLoggingProducesUncorruptedLines() = runBlocking {
+        val jobs = (1..20).map { threadId ->
+            async(Dispatchers.Default) {
+                repeat(20) { messageId ->
+                    DevLog.log("TEST", "thread-$threadId-msg-$messageId")
+                }
+            }
+        }
+        jobs.awaitAll()
+
+        val lines = DevLog.dump().lines()
+        assertEquals(DevLog.MAX_ENTRIES, lines.size)
+        lines.forEach { line ->
+            assertTrue(line.matches(Regex("""\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[TEST\] thread-\d+-msg-\d+""")))
+        }
     }
 }

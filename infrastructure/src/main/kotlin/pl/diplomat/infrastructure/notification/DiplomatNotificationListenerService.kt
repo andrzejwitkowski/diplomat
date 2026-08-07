@@ -4,7 +4,6 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.coroutines.launch
 import pl.diplomat.domain.model.MessageContent
-import pl.diplomat.domain.model.bodyText
 import pl.diplomat.infrastructure.DiplomatServiceLocator
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.debug.NotificationExtrasSummary
@@ -19,7 +18,7 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
         val extras = sbn.notification.extras
         DevLog.log(
             "NOTIF",
-            "received pkg=$packageName key=${sbn.key} ${NotificationExtrasSummary.format(extras)}",
+            "received pkg=$packageName hasKey=${sbn.key.isNotBlank()} ${NotificationExtrasSummary.format(extras)}",
         )
 
         val locator = application as? DiplomatServiceLocator
@@ -41,9 +40,9 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
 
         DevLog.log(
             "PARSE",
-            "ok app=${parsed.sourceApp} sender=${parsed.senderPhone} " +
-                "candidates=${parsed.additionalSenderCandidates} " +
-                "body=${contentPreview(parsed.content)}",
+            "ok app=${parsed.sourceApp} primarySenderLen=${parsed.senderPhone.length} " +
+                "extraCandidates=${parsed.additionalSenderCandidates.size} " +
+                contentMetadata(parsed.content),
         )
 
         val raw = locator.notificationParser.toRaw(parsed)
@@ -52,23 +51,27 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
                 is ProcessIncomingMessageResult.Saved -> {
                     DevLog.log(
                         "RESULT",
-                        "saved contact=${result.contact.displayName} " +
-                            "status=${result.message.status} id=${result.message.id}",
+                        "saved contactId=${result.contact.id} status=${result.message.status} " +
+                            "messageId=${result.message.id}",
                     )
                     locator.incomingMessageNotifier.notify(result.contact, result.message)
                 }
                 ProcessIncomingMessageResult.RejectedNotWhitelisted ->
                     DevLog.log(
                         "RESULT",
-                        "rejected sender=${raw.senderPhone} " +
-                            "candidates=${raw.additionalSenderCandidates}",
+                        "rejected primarySenderLen=${raw.senderPhone.length} " +
+                            "extraCandidates=${raw.additionalSenderCandidates.size}",
                     )
                 ProcessIncomingMessageResult.IgnoredDuplicate ->
-                    DevLog.log("RESULT", "duplicate key=${raw.notificationKey}")
+                    DevLog.log("RESULT", "duplicate")
             }
         }
     }
 
-    private fun contentPreview(content: MessageContent): String =
-        content.bodyText()?.take(120)?.replace('\n', ' ') ?: content.toString()
+    private fun contentMetadata(content: MessageContent): String = when (content) {
+        is MessageContent.TextOnly -> "content=text textLen=${content.body.length}"
+        is MessageContent.VisualOnly -> "content=visual kind=${content.kind}"
+        is MessageContent.VisualWithText ->
+            "content=visualWithText kind=${content.kind} textLen=${content.body.length}"
+    }
 }

@@ -59,7 +59,7 @@ class ProcessIncomingMessageUseCase(
     }
 
     private suspend fun resolveContact(raw: RawIncomingMessage): WhitelistedContact? {
-        val candidates = (raw.additionalSenderCandidates + raw.senderPhone)
+        val candidates = (listOf(raw.senderPhone) + raw.additionalSenderCandidates)
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .distinct()

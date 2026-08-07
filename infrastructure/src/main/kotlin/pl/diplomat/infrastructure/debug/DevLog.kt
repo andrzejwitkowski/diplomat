@@ -1,22 +1,20 @@
 package pl.diplomat.infrastructure.debug
 
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 object DevLog {
     internal const val MAX_ENTRIES = 300
 
     private val lock = Any()
     private val entries = ArrayDeque<String>(MAX_ENTRIES)
-    private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    private val timestampFormat: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC)
 
     fun log(tag: String, message: String) {
-        val line = "${timestampFormat.format(Date())} [$tag] $message"
+        val line = "${timestampFormat.format(Instant.now())} [$tag] $message"
         synchronized(lock) {
             if (entries.size >= MAX_ENTRIES) {
                 entries.removeFirst()
