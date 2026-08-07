@@ -11,8 +11,7 @@ class NotificationExtrasBuilder {
     private var text: String? = null
     private var conversationTitle: CharSequence? = null
     private var picture: Bitmap? = null
-    private var messagingMessages: List<Pair<String?, String?>> = emptyList()
-    private var messagingPersonMessages: List<Pair<String, Person>> = emptyList()
+    private var messagingEntries: List<MessagingEntry> = emptyList()
 
     fun withTitle(value: String) = apply { title = value }
 
@@ -31,11 +30,11 @@ class NotificationExtrasBuilder {
     }
 
     fun withMessagingMessage(text: String, sender: String? = null) = apply {
-        messagingMessages = messagingMessages + (sender to text)
+        messagingEntries = messagingEntries + MessagingEntry.Plain(sender, text)
     }
 
     fun withMessagingOutgoingMessage(text: String) = apply {
-        messagingMessages = messagingMessages + (null to text)
+        messagingEntries = messagingEntries + MessagingEntry.Plain(sender = null, text = text)
     }
 
     fun withMessagingPersonMessage(text: String, personName: String, tel: String) = apply {
@@ -43,7 +42,7 @@ class NotificationExtrasBuilder {
             .setName(personName)
             .setUri(Uri.parse("tel:$tel"))
             .build()
-        messagingPersonMessages = messagingPersonMessages + (text to person)
+        messagingEntries = messagingEntries + MessagingEntry.WithPerson(text, person)
     }
 
     fun build(): Bundle = Bundle().apply {
@@ -51,27 +50,26 @@ class NotificationExtrasBuilder {
         text?.let { putCharSequence("android.text", it) }
         conversationTitle?.let { putCharSequence("android.conversationTitle", it) }
         picture?.let { putParcelable("android.picture", it) }
-        val messageBundles = buildList {
-            messagingMessages.forEach { (sender, messageText) ->
-                add(
-                    Bundle().apply {
-                        putCharSequence("text", messageText)
-                        sender?.let { putCharSequence("sender", it) }
-                    },
-                )
-            }
-            messagingPersonMessages.forEach { (messageText, person) ->
-                add(
-                    Bundle().apply {
-                        putCharSequence("text", messageText)
-                        putParcelable("sender_person", person)
-                    },
-                )
+        val messageBundles = messagingEntries.map { entry ->
+            when (entry) {
+                is MessagingEntry.Plain -> Bundle().apply {
+                    putCharSequence("text", entry.text)
+                    entry.sender?.let { putCharSequence("sender", it) }
+                }
+                is MessagingEntry.WithPerson -> Bundle().apply {
+                    putCharSequence("text", entry.text)
+                    putParcelable("sender_person", entry.person)
+                }
             }
         }
         if (messageBundles.isNotEmpty()) {
             putParcelableArray("android.messages", messageBundles.toTypedArray())
         }
+    }
+
+    private sealed interface MessagingEntry {
+        data class Plain(val sender: String?, val text: String) : MessagingEntry
+        data class WithPerson(val text: String, val person: Person) : MessagingEntry
     }
 }
 

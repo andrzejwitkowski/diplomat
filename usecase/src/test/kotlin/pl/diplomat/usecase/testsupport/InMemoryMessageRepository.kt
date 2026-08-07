@@ -61,7 +61,7 @@ class InMemoryMessageRepository(
     override suspend fun markAllAsReadForContact(contactId: Long) {
         messages.update { current ->
             current.map { message ->
-                if (message.contactId == contactId && !message.isRead) {
+                if (message.contactId == contactId && !message.isRead && !message.isOutgoing) {
                     message.copy(isRead = true)
                 } else {
                     message
