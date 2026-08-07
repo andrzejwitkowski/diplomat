@@ -18,6 +18,8 @@
     <string name="dashboard_loading">Loading conversations…</string>
     <string name="dashboard_empty">No active conversations yet.</string>
     <string name="notification_listener_required">Notification access is required to monitor SMS and WhatsApp messages.</string>
+    <string name="post_notifications_required">Allow notifications so Diplomat can alert you when a whitelisted contact messages you.</string>
+    <string name="grant_permission">Grant permission</string>
     <string name="open_settings">Open settings</string>
     <string name="open_whitelist">Manage whitelist</string>
     <string name="status_pending">Pending</string>

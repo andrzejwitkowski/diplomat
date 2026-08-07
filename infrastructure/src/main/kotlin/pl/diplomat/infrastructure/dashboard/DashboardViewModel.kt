@@ -18,6 +18,7 @@ sealed interface DashboardUiState {
     data class Content(
         val conversations: List<ConversationThread>,
         val isNotificationListenerEnabled: Boolean,
+        val isPostNotificationsEnabled: Boolean,
         val buildInfo: AppBuildInfo,
         val selectedThread: ConversationThread? = null,
     ) : DashboardUiState
@@ -31,18 +32,21 @@ class DashboardViewModel(
 ) : ViewModel() {
 
     private val notificationListenerEnabled = MutableStateFlow(false)
+    private val postNotificationsEnabled = MutableStateFlow(true)
     private val selectedThread = MutableStateFlow<ConversationThread?>(null)
     private val buildInfoState = MutableStateFlow(buildInfo)
 
     val uiState: StateFlow<DashboardUiState> = combine(
         getActiveConversations(),
         notificationListenerEnabled,
+        postNotificationsEnabled,
         selectedThread,
         buildInfoState,
-    ) { conversations, listenerEnabled, thread, info ->
+    ) { conversations, listenerEnabled, postNotificationsEnabled, thread, info ->
         DashboardUiState.Content(
             conversations = conversations,
             isNotificationListenerEnabled = listenerEnabled,
+            isPostNotificationsEnabled = postNotificationsEnabled,
             buildInfo = info,
             selectedThread = thread,
         )
@@ -52,6 +56,10 @@ class DashboardViewModel(
 
     fun refreshNotificationListenerPermission(isEnabled: Boolean) {
         notificationListenerEnabled.value = isEnabled
+    }
+
+    fun refreshPostNotificationsPermission(isEnabled: Boolean) {
+        postNotificationsEnabled.value = isEnabled
     }
 
     fun onThreadClick(thread: ConversationThread) {

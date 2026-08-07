@@ -19,6 +19,7 @@ data class RawIncomingMessage(
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
     val notificationKey: String? = null,
+    val additionalSenderCandidates: List<String> = emptyList(),
 )
 
 sealed class ProcessIncomingMessageResult {
@@ -33,7 +34,7 @@ class ProcessIncomingMessageUseCase(
     private val systemContacts: SystemContactsPort,
 ) {
     suspend operator fun invoke(raw: RawIncomingMessage): ProcessIncomingMessageResult {
-        val contact = resolveContact(raw.senderPhone)
+        val contact = resolveContact(raw)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
         val status = when (val content = raw.content) {
@@ -57,17 +58,25 @@ class ProcessIncomingMessageUseCase(
         return ProcessIncomingMessageResult.Saved(message.copy(id = id), contact)
     }
 
-    private suspend fun resolveContact(sender: String): WhitelistedContact? {
-        val trimmed = sender.trim()
-        if (trimmed.isBlank()) return null
+    private suspend fun resolveContact(raw: RawIncomingMessage): WhitelistedContact? {
+        val candidates = (raw.additionalSenderCandidates + raw.senderPhone)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        for (candidate in candidates) {
+            resolveContactCandidate(candidate)?.let { return it }
+        }
+        return null
+    }
 
-        runCatching { PhoneNumber(trimmed) }.getOrNull()
+    private suspend fun resolveContactCandidate(sender: String): WhitelistedContact? {
+        runCatching { PhoneNumber(sender) }.getOrNull()
             ?.let { contactRepository.findByPhoneNumber(it) }
             ?.let { return it }
 
-        contactRepository.findByDisplayName(trimmed)?.let { return it }
+        contactRepository.findByDisplayName(sender)?.let { return it }
 
-        for (phone in systemContacts.findPhoneNumbersByDisplayName(trimmed)) {
+        for (phone in systemContacts.findPhoneNumbersByDisplayName(sender)) {
             contactRepository.findByPhoneNumber(phone)?.let { return it }
         }
         return null

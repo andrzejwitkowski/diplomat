@@ -12,6 +12,7 @@ data class ParsedNotification(
     val timestamp: Long,
     val sourceApp: MessageSourceApp,
     val notificationKey: String,
+    val additionalSenderCandidates: List<String> = emptyList(),
 )
 
 class NotificationParser(
@@ -22,11 +23,11 @@ class NotificationParser(
         val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
         val text = extractNotificationText(extras)
 
-        val senderPhone = when (sourceApp) {
-            MessageSourceApp.SMS -> extractSmsSender(title, extras) ?: title
-            MessageSourceApp.WHATSAPP -> extractWhatsAppSender(title, extras) ?: title
+        val senderCandidates = when (sourceApp) {
+            MessageSourceApp.SMS -> extractSmsSenderCandidates(title, extras)
+            MessageSourceApp.WHATSAPP -> extractWhatsAppSenderCandidates(title, extras)
         }
-
+        val senderPhone = senderCandidates.firstOrNull() ?: title
         if (senderPhone.isBlank()) return null
 
         val content = resolveContent(text, extras) ?: return null
@@ -37,6 +38,7 @@ class NotificationParser(
             timestamp = postedAtMillis,
             sourceApp = sourceApp,
             notificationKey = notificationKey,
+            additionalSenderCandidates = senderCandidates.drop(1),
         )
     }
 
@@ -94,6 +96,7 @@ class NotificationParser(
             timestamp = parsed.timestamp,
             sourceApp = parsed.sourceApp,
             notificationKey = parsed.notificationKey,
+            additionalSenderCandidates = parsed.additionalSenderCandidates,
         )
 
     companion object {
@@ -106,6 +109,16 @@ class NotificationParser(
         private val WHATSAPP_PACKAGES = setOf(
             "com.whatsapp",
             "com.whatsapp.w4b",
+        )
+
+        private val GENERIC_MESSAGING_TITLES = setOf(
+            "messages",
+            "message",
+            "messaging",
+            "sms",
+            "mms",
+            "wiadomości",
+            "wiadomosc",
         )
 
         fun isSupportedPackage(packageName: String): Boolean =
@@ -133,6 +146,7 @@ class NotificationParser(
             ?.joinToString("\n")
             ?.takeIf { it.isNotBlank() }
             ?.let { return it }
+        extractMessagingStylePayload(extras)?.text?.let { return it }
         return ""
     }
 
@@ -141,15 +155,50 @@ class NotificationParser(
             extras.containsKey("android.pictureContentDescription") ||
             extras.getString("android.template")?.contains("BigPictureStyle", ignoreCase = true) == true
 
-    private fun extractSmsSender(title: String, extras: Bundle): String? {
-        extras.getString("android.subText")?.takeIf { it.isNotBlank() }?.let { return it }
-        title.takeIf { it.isNotBlank() }?.let { return it }
-        return null
+    private fun extractSmsSenderCandidates(title: String, extras: Bundle): List<String> {
+        val candidates = mutableListOf<String>()
+        extras.getString("android.conversationTitle")?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { candidates.add(it) }
+        title.trim().takeIf { it.isNotBlank() && !isGenericMessagingAppTitle(it) }
+            ?.let { candidates.add(it) }
+        extras.getString("android.subText")?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { candidates.add(it) }
+        extractMessagingStylePayload(extras)?.sender?.let { candidates.add(it) }
+        title.trim().takeIf { it.isNotBlank() }?.let { candidates.add(it) }
+        return candidates.distinct()
     }
 
-    private fun extractWhatsAppSender(title: String, extras: Bundle): String? {
-        extras.getString("android.conversationTitle")?.takeIf { it.isNotBlank() }?.let { return it }
-        title.takeIf { it.isNotBlank() }?.let { return it }
-        return null
+    private fun extractWhatsAppSenderCandidates(title: String, extras: Bundle): List<String> {
+        val candidates = mutableListOf<String>()
+        extras.getString("android.conversationTitle")?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { candidates.add(it) }
+        title.trim().takeIf { it.isNotBlank() }?.let { candidates.add(it) }
+        return candidates.distinct()
+    }
+
+    private fun isGenericMessagingAppTitle(title: String): Boolean =
+        title.trim().lowercase() in GENERIC_MESSAGING_TITLES
+
+    private data class MessagingStylePayload(
+        val text: String?,
+        val sender: String?,
+    )
+
+    @Suppress("DEPRECATION")
+    private fun extractMessagingStylePayload(extras: Bundle): MessagingStylePayload? {
+        val messages = extras.getParcelableArray("android.messages")
+        if (messages == null || messages.isEmpty()) return null
+
+        var lastText: String? = null
+        var lastSender: String? = null
+        for (parcelable in messages) {
+            val bundle = parcelable as? Bundle ?: continue
+            bundle.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { lastText = it }
+            bundle.getCharSequence("sender")?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { lastSender = it }
+        }
+        if (lastText == null && lastSender == null) return null
+        return MessagingStylePayload(text = lastText, sender = lastSender)
     }
 }

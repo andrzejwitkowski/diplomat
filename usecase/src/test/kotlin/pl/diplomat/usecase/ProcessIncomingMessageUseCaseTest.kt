@@ -168,6 +168,24 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
     }
 
     @Test
+    fun `resolves contact from additional sender candidate when primary sender mismatches`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+
+        val result = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone("Messages")
+                .withAdditionalSenderCandidates(listOf(TestConstants.ALICE_NAME))
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withSourceApp(MessageSourceApp.SMS)
+                .build(),
+        )
+
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.PENDING) }
+    }
+
+    @Test
     fun `resolves contact through address book display name alias`() = runTest {
         contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         systemContacts.register("Jan Kowalski", TestConstants.ALICE_PHONE)

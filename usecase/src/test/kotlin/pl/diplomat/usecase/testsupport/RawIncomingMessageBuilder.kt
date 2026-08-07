@@ -11,8 +11,11 @@ class RawIncomingMessageBuilder {
     private var timestamp: Long = TestConstants.TIMESTAMP_1
     private var sourceApp: MessageSourceApp = MessageSourceApp.SMS
     private var notificationKey: String? = null
+    private var additionalSenderCandidates: List<String> = emptyList()
 
     fun withSenderPhone(value: String) = apply { senderPhone = value }
+
+    fun withAdditionalSenderCandidates(value: List<String>) = apply { additionalSenderCandidates = value }
 
     fun withContent(value: MessageContent) = apply { content = value }
 
@@ -30,6 +33,7 @@ class RawIncomingMessageBuilder {
         timestamp = timestamp,
         sourceApp = sourceApp,
         notificationKey = notificationKey,
+        additionalSenderCandidates = additionalSenderCandidates,
     )
 }
 
