@@ -243,6 +243,54 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
     }
 
     @Test
+    fun `ignores notification repost with different timestamp`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val notificationKey = "notification-key-1"
+        val message = aRawIncomingMessage()
+            .withSenderPhone(TestConstants.ALICE_PHONE)
+            .withText(TestConstants.TEXT_HELLO)
+            .withTimestamp(TestConstants.TIMESTAMP_1)
+            .withNotificationKey(notificationKey)
+            .build()
+
+        useCase(message)
+
+        val repost = useCase(
+            message.copy(timestamp = TestConstants.TIMESTAMP_2),
+        )
+
+        ProcessResultAssertion.assertThat(repost).isIgnoredDuplicate()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(1)
+    }
+
+    @Test
+    fun `saves identical text again after dedup window`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val notificationKey = "notification-key-1"
+
+        useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_HELLO)
+                .withTimestamp(TestConstants.TIMESTAMP_1)
+                .withNotificationKey(notificationKey)
+                .build(),
+        )
+
+        val later = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_PHONE)
+                .withText(TestConstants.TEXT_HELLO)
+                .withTimestamp(TestConstants.TIMESTAMP_1 + 120_000L)
+                .withNotificationKey(notificationKey)
+                .build(),
+        )
+
+        ProcessResultAssertion.assertThat(later).isSaved()
+        MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(2)
+    }
+
+    @Test
     fun `saves distinct messages that share notification key`() = runTest {
         contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         val notificationKey = "notification-key-1"

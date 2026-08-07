@@ -17,7 +17,7 @@ class RoomMessageRepositoryAdapter(
 ) : MessageRepositoryPort {
 
     override suspend fun save(message: IncomingMessage): Long =
-        messageDao.insert(message.toEntity())
+        messageDao.insertIgnoringRecentDuplicate(message.toEntity(), DUPLICATE_WINDOW_MS)
 
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
         combine(
@@ -47,5 +47,9 @@ class RoomMessageRepositoryAdapter(
 
     override suspend fun markAllAsReadForContact(contactId: Long) {
         messageDao.markAllAsReadForContact(contactId)
+    }
+
+    companion object {
+        const val DUPLICATE_WINDOW_MS = 60_000L
     }
 }
