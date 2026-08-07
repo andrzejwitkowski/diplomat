@@ -9,6 +9,7 @@ import pl.diplomat.infrastructure.persistence.toDomain
 import pl.diplomat.infrastructure.persistence.toEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 class RoomMessageRepositoryAdapter(
     private val messageDao: IncomingMessageDao,
@@ -22,17 +23,29 @@ class RoomMessageRepositoryAdapter(
         combine(
             messageDao.observeLatestPerContact(),
             contactDao.observeAll(),
-        ) { messages, contacts ->
+            messageDao.observeUnreadCountsByContact(),
+        ) { messages, contacts, unreadCounts ->
             val contactsById = contacts.associate { it.id to it.toDomain() }
+            val unreadByContactId = unreadCounts.associate { it.contactId to it.unreadCount }
             messages.mapNotNull { entity ->
                 val contact = contactsById[entity.contactId] ?: return@mapNotNull null
                 ConversationThread(
                     contact = contact,
                     lastMessage = entity.toDomain(),
+                    unreadCount = unreadByContactId[entity.contactId] ?: 0,
                 )
             }
         }
 
     override suspend fun findMessagesByContactId(contactId: Long): List<IncomingMessage> =
         messageDao.findByContactId(contactId).map { it.toDomain() }
+
+    override fun observeMessagesByContactId(contactId: Long): Flow<List<IncomingMessage>> =
+        messageDao.observeByContactId(contactId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+
+    override suspend fun markAllAsReadForContact(contactId: Long) {
+        messageDao.markAllAsReadForContact(contactId)
+    }
 }

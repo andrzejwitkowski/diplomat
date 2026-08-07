@@ -58,6 +58,7 @@ import coil.compose.AsyncImage
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
+import pl.diplomat.presentation.conversation.MessageChannelStatusBadges
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
@@ -324,6 +325,7 @@ private fun ConversationThreadCard(
             ContactAvatar(
                 avatarUri = thread.contact.avatarUri,
                 displayName = thread.contact.displayName,
+                unreadCount = thread.unreadCount,
             )
 
             Spacer(Modifier.width(12.dp))
@@ -362,7 +364,7 @@ private fun ConversationThreadCard(
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    MessageStatusBadge(
+                    MessageChannelStatusBadges(
                         status = thread.lastMessage.status,
                         sourceApp = thread.lastMessage.sourceApp,
                     )
@@ -376,68 +378,83 @@ private fun ConversationThreadCard(
 private fun ContactAvatar(
     avatarUri: String?,
     displayName: String,
+    unreadCount: Int = 0,
     size: androidx.compose.ui.unit.Dp = 48.dp,
 ) {
-    if (avatarUri != null) {
-        AsyncImage(
-            model = avatarUri,
-            contentDescription = displayName,
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Surface(
-            modifier = Modifier.size(size),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+    BadgedBox(
+        badge = {
+            if (unreadCount > 0) {
+                Badge {
+                    Text(
+                        text = unreadCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        },
+    ) {
+        if (avatarUri != null) {
+            AsyncImage(
+                model = avatarUri,
+                contentDescription = displayName,
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Surface(
+                modifier = Modifier.size(size),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MessageStatusBadge(
-    status: MessageStatus,
-    sourceApp: MessageSourceApp,
-) {
+internal fun ChannelBadge(sourceApp: MessageSourceApp) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = when (sourceApp) {
+                MessageSourceApp.SMS -> "SMS"
+                MessageSourceApp.WHATSAPP -> "WA"
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+internal fun MessageStatusLabel(status: MessageStatus) {
     val (label, containerColor) = when (status) {
         MessageStatus.PENDING -> stringResource(R.string.status_pending) to MaterialTheme.colorScheme.primary
         MessageStatus.IGNORED_CONFIRMATION -> stringResource(R.string.status_ignored) to MaterialTheme.colorScheme.tertiary
         MessageStatus.REPLIED -> stringResource(R.string.status_replied) to MaterialTheme.colorScheme.secondary
     }
 
-    BadgedBox(
-        badge = {
-            Badge(containerColor = containerColor) {
-                Text(
-                    text = when (sourceApp) {
-                        MessageSourceApp.SMS -> "SMS"
-                        MessageSourceApp.WHATSAPP -> "WA"
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        },
+    Surface(
+        shape = CircleShape,
+        color = containerColor.copy(alpha = 0.15f),
     ) {
-        Surface(
-            shape = CircleShape,
-            color = containerColor.copy(alpha = 0.15f),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = containerColor,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = containerColor,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }

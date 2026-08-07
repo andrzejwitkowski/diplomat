@@ -6,6 +6,7 @@ import pl.diplomat.domain.port.MessageRepositoryPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 class InMemoryMessageRepository(
@@ -39,7 +40,8 @@ class InMemoryMessageRepository(
                     val lastMessage = threadMessages.maxWith(
                         compareBy<IncomingMessage> { it.timestamp }.thenBy { it.id },
                     )
-                    ConversationThread(contact, lastMessage)
+                    val unreadCount = threadMessages.count { !it.isRead }
+                    ConversationThread(contact, lastMessage, unreadCount)
                 }
                 .sortedByDescending { it.lastMessage.timestamp }
         }
@@ -47,6 +49,24 @@ class InMemoryMessageRepository(
     override suspend fun findMessagesByContactId(contactId: Long): List<IncomingMessage> =
         messages.value.filter { it.contactId == contactId }
             .sortedWith(compareByDescending<IncomingMessage> { it.timestamp }.thenByDescending { it.id })
+
+    override fun observeMessagesByContactId(contactId: Long): Flow<List<IncomingMessage>> =
+        messages.map { all ->
+            all.filter { it.contactId == contactId }
+                .sortedWith(compareByDescending<IncomingMessage> { it.timestamp }.thenByDescending { it.id })
+        }
+
+    override suspend fun markAllAsReadForContact(contactId: Long) {
+        messages.update { current ->
+            current.map { message ->
+                if (message.contactId == contactId && !message.isRead) {
+                    message.copy(isRead = true)
+                } else {
+                    message
+                }
+            }
+        }
+    }
 
     fun snapshot(): List<IncomingMessage> = messages.value
 }

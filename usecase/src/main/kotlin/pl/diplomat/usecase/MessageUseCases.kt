@@ -1,5 +1,6 @@
 package pl.diplomat.usecase
 
+import pl.diplomat.domain.model.ChannelMessageGroup
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
 import pl.diplomat.domain.model.MessageContent
@@ -103,3 +104,33 @@ class GetActiveConversationsUseCase(
     operator fun invoke(): Flow<List<ConversationThread>> =
         messageRepository.observeActiveConversations()
 }
+
+class ObserveContactMessagesUseCase(
+    private val messageRepository: MessageRepositoryPort,
+) {
+    operator fun invoke(contactId: Long): Flow<List<IncomingMessage>> =
+        messageRepository.observeMessagesByContactId(contactId)
+}
+
+class MarkConversationAsReadUseCase(
+    private val messageRepository: MessageRepositoryPort,
+) {
+    suspend operator fun invoke(contactId: Long) {
+        messageRepository.markAllAsReadForContact(contactId)
+    }
+}
+
+fun groupMessagesByChannel(messages: List<IncomingMessage>): List<ChannelMessageGroup> =
+    messages
+        .groupBy { it.sourceApp }
+        .map { (sourceApp, channelMessages) ->
+            ChannelMessageGroup(
+                sourceApp = sourceApp,
+                messages = channelMessages.sortedWith(
+                    compareByDescending<IncomingMessage> { it.timestamp }.thenByDescending { it.id },
+                ),
+            )
+        }
+        .sortedByDescending { group ->
+            group.messages.maxOf { it.timestamp }
+        }

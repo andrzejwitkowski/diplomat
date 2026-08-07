@@ -24,8 +24,13 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_4_5
 import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.persistence.MIGRATION_6_7
 import pl.diplomat.infrastructure.persistence.MIGRATION_7_8
+import pl.diplomat.infrastructure.persistence.MIGRATION_8_9
 import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
+import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
+import pl.diplomat.usecase.MarkConversationAsReadUseCase
+import pl.diplomat.usecase.ObserveContactMessagesUseCase
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
 import pl.diplomat.usecase.GetWhitelistedContactsUseCase
@@ -62,6 +67,9 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     lateinit var whitelistViewModel: WhitelistViewModel
         private set
 
+    lateinit var conversationDetailViewModelFactory: (WhitelistedContact) -> ConversationDetailViewModel
+        private set
+
     private lateinit var processIncomingMessage: ProcessIncomingMessageUseCase
 
     override fun onCreate() {
@@ -74,7 +82,16 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         val normalization = NormalizationService.default
 
         val database = Room.databaseBuilder(this, DiplomatDatabase::class.java, "diplomat.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9,
+            )
             .build()
 
         val contactRepository = RoomContactRepositoryAdapter(database.whitelistedContactDao(), normalization)
@@ -92,10 +109,21 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             systemContacts,
         )
 
+        val observeContactMessages = ObserveContactMessagesUseCase(messageRepository)
+        val markConversationAsRead = MarkConversationAsReadUseCase(messageRepository)
+
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
             buildInfo = buildInfo,
         )
+
+        conversationDetailViewModelFactory = { contact ->
+            ConversationDetailViewModel(
+                contact = contact,
+                observeContactMessages = observeContactMessages,
+                markConversationAsRead = markConversationAsRead,
+            )
+        }
 
         whitelistViewModel = WhitelistViewModel(
             getWhitelistedContacts = GetWhitelistedContactsUseCase(contactRepository),

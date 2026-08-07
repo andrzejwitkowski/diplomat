@@ -29,4 +29,20 @@ interface IncomingMessageDao {
 
     @Query("SELECT * FROM incoming_messages WHERE contactId = :contactId ORDER BY timestamp DESC, id DESC")
     suspend fun findByContactId(contactId: Long): List<IncomingMessageEntity>
+
+    @Query("SELECT * FROM incoming_messages WHERE contactId = :contactId ORDER BY timestamp DESC, id DESC")
+    fun observeByContactId(contactId: Long): Flow<List<IncomingMessageEntity>>
+
+    @Query(
+        """
+        SELECT contactId, COUNT(*) AS unreadCount
+        FROM incoming_messages
+        WHERE isRead = 0
+        GROUP BY contactId
+        """,
+    )
+    fun observeUnreadCountsByContact(): Flow<List<ContactUnreadCountEntity>>
+
+    @Query("UPDATE incoming_messages SET isRead = 1 WHERE contactId = :contactId AND isRead = 0")
+    suspend fun markAllAsReadForContact(contactId: Long)
 }

@@ -34,4 +34,5 @@ data class IncomingMessageEntity(
     val sourceApp: String,
     val status: String,
     val notificationKey: String? = null,
+    val isRead: Boolean = false,
 )
