@@ -1,5 +1,6 @@
 package pl.diplomat.presentation.dashboard
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
