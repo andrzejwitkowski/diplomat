@@ -49,11 +49,7 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
         locator.applicationScope.launch {
             when (val result = locator.processIncomingMessage(raw)) {
                 is ProcessIncomingMessageResult.Saved -> {
-                    DevLog.log(
-                        "RESULT",
-                        "saved contactId=${result.contact.id} status=${result.message.status} " +
-                            "messageId=${result.message.id}",
-                    )
+                    DevLog.log("RESULT", "saved status=${result.message.status}")
                     locator.incomingMessageNotifier.notify(result.contact, result.message)
                 }
                 ProcessIncomingMessageResult.RejectedNotWhitelisted ->

@@ -6,8 +6,9 @@ object NotificationExtrasSummary {
     fun format(extras: Bundle): String {
         val titleLen = extras.getCharSequence("android.title")?.toString()?.trim()?.length ?: 0
         val textLen = extras.getCharSequence("android.text")?.toString()?.trim()?.length ?: 0
-        val conversationTitleLen = extras.getString("android.conversationTitle")?.trim()?.length ?: 0
-        val subTextLen = extras.getString("android.subText")?.trim()?.length ?: 0
+        val conversationTitleLen =
+            extras.getCharSequence("android.conversationTitle")?.toString()?.trim()?.length ?: 0
+        val subTextLen = extras.getCharSequence("android.subText")?.toString()?.trim()?.length ?: 0
         @Suppress("DEPRECATION")
         val messageCount = extras.getParcelableArray("android.messages")?.size ?: 0
         return buildString {
