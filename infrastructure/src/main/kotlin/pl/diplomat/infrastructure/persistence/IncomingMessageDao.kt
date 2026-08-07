@@ -4,12 +4,13 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface IncomingMessageDao {
+abstract class IncomingMessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(entity: IncomingMessageEntity): Long
+    abstract suspend fun insert(entity: IncomingMessageEntity): Long
 
     @Query(
         """
@@ -18,15 +19,16 @@ interface IncomingMessageDao {
           AND text = :text
           AND contentType = :contentType
           AND mediaKind = :mediaKind
-          AND timestamp >= :sinceTimestamp
+          AND timestamp BETWEEN :sinceTimestamp AND :untilTimestamp
         """,
     )
-    suspend fun hasRecentDuplicateByNotificationKey(
+    protected abstract suspend fun hasRecentDuplicateByNotificationKey(
         notificationKey: String,
         text: String,
         contentType: String,
         mediaKind: String,
         sinceTimestamp: Long,
+        untilTimestamp: Long,
     ): Boolean
 
     @Query(
@@ -37,16 +39,46 @@ interface IncomingMessageDao {
           AND text = :text
           AND contentType = :contentType
           AND mediaKind = :mediaKind
-          AND timestamp >= :sinceTimestamp
+          AND timestamp BETWEEN :sinceTimestamp AND :untilTimestamp
         """,
     )
-    suspend fun hasRecentDuplicateByContact(
+    protected abstract suspend fun hasRecentDuplicateByContact(
         contactId: Long,
         text: String,
         contentType: String,
         mediaKind: String,
         sinceTimestamp: Long,
+        untilTimestamp: Long,
     ): Boolean
+
+    @Transaction
+    open suspend fun insertIgnoringRecentDuplicate(
+        entity: IncomingMessageEntity,
+        windowMs: Long,
+    ): Long {
+        val sinceTimestamp = entity.timestamp - windowMs
+        val untilTimestamp = entity.timestamp + windowMs
+        val isDuplicate = when (val notificationKey = entity.notificationKey) {
+            null -> hasRecentDuplicateByContact(
+                contactId = entity.contactId,
+                text = entity.text,
+                contentType = entity.contentType,
+                mediaKind = entity.mediaKind,
+                sinceTimestamp = sinceTimestamp,
+                untilTimestamp = untilTimestamp,
+            )
+            else -> hasRecentDuplicateByNotificationKey(
+                notificationKey = notificationKey,
+                text = entity.text,
+                contentType = entity.contentType,
+                mediaKind = entity.mediaKind,
+                sinceTimestamp = sinceTimestamp,
+                untilTimestamp = untilTimestamp,
+            )
+        }
+        if (isDuplicate) return DUPLICATE_ID
+        return insert(entity)
+    }
 
     @Query(
         """
@@ -62,13 +94,13 @@ interface IncomingMessageDao {
         ORDER BY m.timestamp DESC, m.id DESC
         """,
     )
-    fun observeLatestPerContact(): Flow<List<IncomingMessageEntity>>
+    abstract fun observeLatestPerContact(): Flow<List<IncomingMessageEntity>>
 
     @Query("SELECT * FROM incoming_messages WHERE contactId = :contactId ORDER BY timestamp DESC, id DESC")
-    suspend fun findByContactId(contactId: Long): List<IncomingMessageEntity>
+    abstract suspend fun findByContactId(contactId: Long): List<IncomingMessageEntity>
 
     @Query("SELECT * FROM incoming_messages WHERE contactId = :contactId ORDER BY timestamp DESC, id DESC")
-    fun observeByContactId(contactId: Long): Flow<List<IncomingMessageEntity>>
+    abstract fun observeByContactId(contactId: Long): Flow<List<IncomingMessageEntity>>
 
     @Query(
         """
@@ -78,8 +110,12 @@ interface IncomingMessageDao {
         GROUP BY contactId
         """,
     )
-    fun observeUnreadCountsByContact(): Flow<List<ContactUnreadCountEntity>>
+    abstract fun observeUnreadCountsByContact(): Flow<List<ContactUnreadCountEntity>>
 
     @Query("UPDATE incoming_messages SET isRead = 1 WHERE contactId = :contactId AND isRead = 0")
-    suspend fun markAllAsReadForContact(contactId: Long)
+    abstract suspend fun markAllAsReadForContact(contactId: Long)
+
+    companion object {
+        const val DUPLICATE_ID = -1L
+    }
 }

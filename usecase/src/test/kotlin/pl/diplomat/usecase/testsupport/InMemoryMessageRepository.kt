@@ -8,22 +8,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class InMemoryMessageRepository(
     private val contactRepository: InMemoryContactRepository,
 ) : MessageRepositoryPort {
     private val messages = MutableStateFlow<List<IncomingMessage>>(emptyList())
+    private val saveMutex = Mutex()
     private var nextId = 1L
 
-    override suspend fun save(message: IncomingMessage): Long {
+    override suspend fun save(message: IncomingMessage): Long = saveMutex.withLock {
         val sinceTimestamp = message.timestamp - DUPLICATE_WINDOW_MS
-        if (messages.value.any { existing -> existing.isRecentDuplicateOf(message, sinceTimestamp) }) {
-            return -1L
+        val untilTimestamp = message.timestamp + DUPLICATE_WINDOW_MS
+        if (messages.value.any { existing ->
+                existing.isRecentDuplicateOf(message, sinceTimestamp, untilTimestamp)
+            }
+        ) {
+            return@withLock -1L
         }
         val id = if (message.id == 0L) nextId++ else message.id
         val stored = message.copy(id = id)
         messages.update { current -> current + stored }
-        return id
+        id
     }
 
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
@@ -73,8 +80,9 @@ class InMemoryMessageRepository(
 private fun IncomingMessage.isRecentDuplicateOf(
     candidate: IncomingMessage,
     sinceTimestamp: Long,
+    untilTimestamp: Long,
 ): Boolean {
-    if (content != candidate.content || timestamp < sinceTimestamp) return false
+    if (content != candidate.content || timestamp !in sinceTimestamp..untilTimestamp) return false
     return when (val key = candidate.notificationKey) {
         null -> contactId == candidate.contactId && notificationKey == null
         else -> notificationKey == key

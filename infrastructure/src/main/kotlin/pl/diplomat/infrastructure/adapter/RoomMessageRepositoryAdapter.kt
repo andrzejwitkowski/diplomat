@@ -16,31 +16,8 @@ class RoomMessageRepositoryAdapter(
     private val contactDao: WhitelistedContactDao,
 ) : MessageRepositoryPort {
 
-    override suspend fun save(message: IncomingMessage): Long {
-        val entity = message.toEntity()
-        if (isRecentDuplicate(entity)) return DUPLICATE_ID
-        return messageDao.insert(entity)
-    }
-
-    private suspend fun isRecentDuplicate(entity: IncomingMessageEntity): Boolean {
-        val sinceTimestamp = entity.timestamp - DUPLICATE_WINDOW_MS
-        return when (val notificationKey = entity.notificationKey) {
-            null -> messageDao.hasRecentDuplicateByContact(
-                contactId = entity.contactId,
-                text = entity.text,
-                contentType = entity.contentType,
-                mediaKind = entity.mediaKind,
-                sinceTimestamp = sinceTimestamp,
-            )
-            else -> messageDao.hasRecentDuplicateByNotificationKey(
-                notificationKey = notificationKey,
-                text = entity.text,
-                contentType = entity.contentType,
-                mediaKind = entity.mediaKind,
-                sinceTimestamp = sinceTimestamp,
-            )
-        }
-    }
+    override suspend fun save(message: IncomingMessage): Long =
+        messageDao.insertIgnoringRecentDuplicate(message.toEntity(), DUPLICATE_WINDOW_MS)
 
     override fun observeActiveConversations(): Flow<List<ConversationThread>> =
         combine(
@@ -74,6 +51,5 @@ class RoomMessageRepositoryAdapter(
 
     companion object {
         const val DUPLICATE_WINDOW_MS = 60_000L
-        const val DUPLICATE_ID = -1L
     }
 }
