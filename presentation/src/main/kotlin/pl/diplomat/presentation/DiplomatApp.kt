@@ -6,9 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
-import pl.diplomat.presentation.conversation.ConversationDetailScreen
+import pl.diplomat.presentation.conversation.ConversationDetailRoute
 import pl.diplomat.presentation.dashboard.DashboardRoute
 import pl.diplomat.presentation.navigation.DiplomatDestination
 import pl.diplomat.presentation.whitelist.WhitelistRoute
@@ -17,6 +19,7 @@ import pl.diplomat.presentation.whitelist.WhitelistRoute
 fun DiplomatApp(
     dashboardViewModel: DashboardViewModel,
     whitelistViewModel: WhitelistViewModel,
+    conversationDetailViewModelFactory: (WhitelistedContact) -> ConversationDetailViewModel,
 ) {
     var destination by remember { mutableStateOf<DiplomatDestination>(DiplomatDestination.Dashboard) }
 
@@ -50,8 +53,12 @@ fun DiplomatApp(
         }
 
         is DiplomatDestination.ConversationDetail -> {
-            ConversationDetailScreen(
+            val detailViewModel = remember(current.thread.contact.id) {
+                conversationDetailViewModelFactory(current.thread.contact)
+            }
+            ConversationDetailRoute(
                 thread = current.thread,
+                viewModel = detailViewModel,
                 onBack = {
                     dashboardViewModel.clearSelectedThread()
                     destination = DiplomatDestination.Dashboard

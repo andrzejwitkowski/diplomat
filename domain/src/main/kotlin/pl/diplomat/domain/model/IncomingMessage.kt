@@ -19,6 +19,7 @@ data class IncomingMessage(
     val sourceApp: MessageSourceApp,
     val status: MessageStatus,
     val notificationKey: String? = null,
+    val isRead: Boolean = false,
 ) {
     init {
         require(contactId > 0) { "Contact id must be positive" }
@@ -29,4 +30,10 @@ data class IncomingMessage(
 data class ConversationThread(
     val contact: WhitelistedContact,
     val lastMessage: IncomingMessage,
+    val unreadCount: Int = 0,
+)
+
+data class ChannelMessageGroup(
+    val sourceApp: MessageSourceApp,
+    val messages: List<IncomingMessage>,
 )

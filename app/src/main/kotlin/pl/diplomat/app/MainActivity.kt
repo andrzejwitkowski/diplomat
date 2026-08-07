@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
                     DiplomatApp(
                         dashboardViewModel = application.dashboardViewModel,
                         whitelistViewModel = application.whitelistViewModel,
+                        conversationDetailViewModelFactory = application.conversationDetailViewModelFactory,
                     )
                 }
             }

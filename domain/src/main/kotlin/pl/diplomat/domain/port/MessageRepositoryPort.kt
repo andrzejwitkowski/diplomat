@@ -11,4 +11,6 @@ interface MessageRepositoryPort {
     suspend fun save(message: IncomingMessage): Long
     fun observeActiveConversations(): Flow<List<ConversationThread>>
     suspend fun findMessagesByContactId(contactId: Long): List<IncomingMessage>
+    fun observeMessagesByContactId(contactId: Long): Flow<List<IncomingMessage>>
+    suspend fun markAllAsReadForContact(contactId: Long)
 }
