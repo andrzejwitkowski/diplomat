@@ -39,9 +39,28 @@ class ParsedNotificationAssertion private constructor(
         assertEquals(MessageContent.VisualOnly(kind), requireNotNull(actual).content)
     }
 
+    fun isOutgoing(expected: Boolean = true): ParsedNotificationAssertion = apply {
+        assertEquals(expected, requireNotNull(actual).isOutgoing)
+    }
+
     companion object {
         fun assertThat(actual: ParsedNotification?): ParsedNotificationAssertion =
             ParsedNotificationAssertion(actual)
+
+        fun assertThat(actual: List<ParsedNotification>): ParsedNotificationsAssertion =
+            ParsedNotificationsAssertion(actual)
+    }
+}
+
+class ParsedNotificationsAssertion private constructor(
+    private val actual: List<ParsedNotification>,
+) {
+    fun hasSize(expected: Int): ParsedNotificationsAssertion = apply {
+        assertEquals(expected, actual.size)
+    }
+
+    fun at(index: Int, block: ParsedNotificationAssertion.() -> Unit): ParsedNotificationsAssertion = apply {
+        ParsedNotificationAssertion.assertThat(actual[index]).block()
     }
 }
 

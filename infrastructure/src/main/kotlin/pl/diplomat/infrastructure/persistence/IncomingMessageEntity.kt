@@ -19,7 +19,7 @@ import androidx.room.PrimaryKey
         Index("contactId"),
         Index("timestamp"),
         Index(
-            value = ["notificationKey", "timestamp", "text", "contentType", "mediaKind"],
+            value = ["notificationKey", "timestamp", "text", "contentType", "mediaKind", "isOutgoing"],
             unique = true,
         ),
     ],
@@ -35,4 +35,5 @@ data class IncomingMessageEntity(
     val status: String,
     val notificationKey: String? = null,
     val isRead: Boolean = false,
+    val isOutgoing: Boolean = false,
 )

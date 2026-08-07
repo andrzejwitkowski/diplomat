@@ -42,7 +42,7 @@ class InMemoryMessageRepository(
                     val lastMessage = threadMessages.maxWith(
                         compareBy<IncomingMessage> { it.timestamp }.thenBy { it.id },
                     )
-                    val unreadCount = threadMessages.count { !it.isRead }
+                    val unreadCount = threadMessages.count { !it.isRead && !it.isOutgoing }
                     ConversationThread(contact, lastMessage, unreadCount)
                 }
                 .sortedByDescending { it.lastMessage.timestamp }
@@ -61,7 +61,7 @@ class InMemoryMessageRepository(
     override suspend fun markAllAsReadForContact(contactId: Long) {
         messages.update { current ->
             current.map { message ->
-                if (message.contactId == contactId && !message.isRead) {
+                if (message.contactId == contactId && !message.isRead && !message.isOutgoing) {
                     message.copy(isRead = true)
                 } else {
                     message
@@ -82,7 +82,12 @@ private fun IncomingMessage.isRecentDuplicateOf(
     sinceTimestamp: Long,
     untilTimestamp: Long,
 ): Boolean {
-    if (content != candidate.content || timestamp !in sinceTimestamp..untilTimestamp) return false
+    if (content != candidate.content ||
+        timestamp !in sinceTimestamp..untilTimestamp ||
+        isOutgoing != candidate.isOutgoing
+    ) {
+        return false
+    }
     return when (val key = candidate.notificationKey) {
         null -> contactId == candidate.contactId && notificationKey == null
         else -> notificationKey == key

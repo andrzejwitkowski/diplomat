@@ -20,6 +20,7 @@ data class IncomingMessage(
     val status: MessageStatus,
     val notificationKey: String? = null,
     val isRead: Boolean = false,
+    val isOutgoing: Boolean = false,
 ) {
     init {
         require(contactId > 0) { "Contact id must be positive" }

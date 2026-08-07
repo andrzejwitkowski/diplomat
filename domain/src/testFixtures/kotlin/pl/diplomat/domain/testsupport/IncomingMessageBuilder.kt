@@ -15,6 +15,7 @@ class IncomingMessageBuilder {
     private var status: MessageStatus = MessageStatus.PENDING
     private var notificationKey: String? = null
     private var isRead: Boolean = false
+    private var isOutgoing: Boolean = false
 
     fun withId(value: Long) = apply { id = value }
 
@@ -40,6 +41,8 @@ class IncomingMessageBuilder {
 
     fun withIsRead(value: Boolean) = apply { isRead = value }
 
+    fun withIsOutgoing(value: Boolean) = apply { isOutgoing = value }
+
     fun build(): IncomingMessage = IncomingMessage(
         id = id,
         contactId = contactId,
@@ -49,6 +52,7 @@ class IncomingMessageBuilder {
         status = status,
         notificationKey = notificationKey,
         isRead = isRead,
+        isOutgoing = isOutgoing,
     )
 }
 

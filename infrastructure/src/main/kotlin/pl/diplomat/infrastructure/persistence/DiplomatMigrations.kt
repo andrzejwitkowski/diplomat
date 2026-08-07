@@ -133,6 +133,19 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE incoming_messages ADD COLUMN isOutgoing INTEGER NOT NULL DEFAULT 0",
+        )
+        db.execSQL("DROP INDEX IF EXISTS index_incoming_messages_notification_dedup")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_incoming_messages_notification_dedup " +
+                "ON incoming_messages(notificationKey, timestamp, text, contentType, mediaKind, isOutgoing)",
+        )
+    }
+}
+
 val MIGRATION_7_8 = object : Migration(7, 8) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

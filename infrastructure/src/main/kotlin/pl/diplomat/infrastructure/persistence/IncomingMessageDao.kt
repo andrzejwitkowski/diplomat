@@ -19,6 +19,7 @@ abstract class IncomingMessageDao {
           AND text = :text
           AND contentType = :contentType
           AND mediaKind = :mediaKind
+          AND isOutgoing = :isOutgoing
           AND timestamp BETWEEN :sinceTimestamp AND :untilTimestamp
         """,
     )
@@ -27,6 +28,7 @@ abstract class IncomingMessageDao {
         text: String,
         contentType: String,
         mediaKind: String,
+        isOutgoing: Boolean,
         sinceTimestamp: Long,
         untilTimestamp: Long,
     ): Boolean
@@ -39,6 +41,7 @@ abstract class IncomingMessageDao {
           AND text = :text
           AND contentType = :contentType
           AND mediaKind = :mediaKind
+          AND isOutgoing = :isOutgoing
           AND timestamp BETWEEN :sinceTimestamp AND :untilTimestamp
         """,
     )
@@ -47,6 +50,7 @@ abstract class IncomingMessageDao {
         text: String,
         contentType: String,
         mediaKind: String,
+        isOutgoing: Boolean,
         sinceTimestamp: Long,
         untilTimestamp: Long,
     ): Boolean
@@ -64,6 +68,7 @@ abstract class IncomingMessageDao {
                 text = entity.text,
                 contentType = entity.contentType,
                 mediaKind = entity.mediaKind,
+                isOutgoing = entity.isOutgoing,
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
             )
@@ -72,6 +77,7 @@ abstract class IncomingMessageDao {
                 text = entity.text,
                 contentType = entity.contentType,
                 mediaKind = entity.mediaKind,
+                isOutgoing = entity.isOutgoing,
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
             )
@@ -106,13 +112,13 @@ abstract class IncomingMessageDao {
         """
         SELECT contactId, COUNT(*) AS unreadCount
         FROM incoming_messages
-        WHERE isRead = 0
+        WHERE isRead = 0 AND isOutgoing = 0
         GROUP BY contactId
         """,
     )
     abstract fun observeUnreadCountsByContact(): Flow<List<ContactUnreadCountEntity>>
 
-    @Query("UPDATE incoming_messages SET isRead = 1 WHERE contactId = :contactId AND isRead = 0")
+    @Query("UPDATE incoming_messages SET isRead = 1 WHERE contactId = :contactId AND isRead = 0 AND isOutgoing = 0")
     abstract suspend fun markAllAsReadForContact(contactId: Long)
 
     companion object {

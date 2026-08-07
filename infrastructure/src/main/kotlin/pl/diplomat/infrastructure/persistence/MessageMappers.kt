@@ -17,6 +17,7 @@ internal fun IncomingMessageEntity.toDomain(): IncomingMessage =
         status = MessageStatus.valueOf(status),
         notificationKey = notificationKey,
         isRead = isRead,
+        isOutgoing = isOutgoing,
     )
 
 internal fun IncomingMessage.toEntity(): IncomingMessageEntity {
@@ -32,6 +33,7 @@ internal fun IncomingMessage.toEntity(): IncomingMessageEntity {
         status = status.name,
         notificationKey = notificationKey,
         isRead = isRead,
+        isOutgoing = isOutgoing,
     )
 }
 

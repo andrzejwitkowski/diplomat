@@ -14,6 +14,84 @@ import pl.diplomat.infrastructure.testsupport.notificationExtras
 class NotificationParserTest : BaseSpec() {
 
     @Test
+    fun parsesWhatsAppConversationThreadWithOutboundMessages() {
+        val parsed = parseNotifications(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withMessagingPersonMessage(
+                    text = TestConstants.TEXT_HELLO,
+                    personName = NotificationTestConstants.WHATSAPP_SENDER,
+                    tel = TestConstants.ALICE_PHONE,
+                )
+                .withMessagingMessage(TestConstants.TEXT_OK, sender = "You")
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .hasSize(2)
+            .at(0) {
+                isNotNull()
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_HELLO))
+                isOutgoing(false)
+            }
+            .at(1) {
+                isNotNull()
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_OK))
+                isOutgoing(true)
+            }
+    }
+
+    @Test
+    fun keepsInboundWhatsAppThreadMessageWithoutSenderMetadata() {
+        val parsed = parseNotifications(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withMessagingMessage(TestConstants.TEXT_HELLO)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .hasSize(1)
+            .at(0) {
+                isNotNull()
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_HELLO))
+                isOutgoing(false)
+            }
+    }
+
+    @Test
+    fun doesNotApplyPictureExtrasToEarlierThreadMessages() {
+        val parsed = parseNotifications(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withMessagingMessage(TestConstants.TEXT_HELLO)
+                .withMessagingMessage(TestConstants.TEXT_SUNSET_CAPTION)
+                .withPicture()
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_IMAGE_CAPTION,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .hasSize(2)
+            .at(0) {
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_HELLO))
+            }
+            .at(1) {
+                hasContent(
+                    MessageContent.VisualWithText(VisualMediaKind.PHOTO, TestConstants.TEXT_SUNSET_CAPTION),
+                )
+            }
+    }
+
+    @Test
     fun parsesSmsMessagingStyleNotificationWithoutStandardText() {
         val parsed = parseNotification(
             packageName = NotificationTestConstants.SMS_PACKAGE,

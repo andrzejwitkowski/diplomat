@@ -21,6 +21,7 @@ data class RawIncomingMessage(
     val sourceApp: MessageSourceApp,
     val notificationKey: String? = null,
     val additionalSenderCandidates: List<String> = emptyList(),
+    val isOutgoing: Boolean = false,
 )
 
 sealed class ProcessIncomingMessageResult {
@@ -38,10 +39,13 @@ class ProcessIncomingMessageUseCase(
         val contact = resolveContact(raw)
             ?: return ProcessIncomingMessageResult.RejectedNotWhitelisted
 
-        val status = when (val content = raw.content) {
-            is MessageContent.VisualOnly -> MessageStatus.PENDING
-            is MessageContent.TextOnly -> classifyText(content.body)
-            is MessageContent.VisualWithText -> classifyText(content.body)
+        val status = when {
+            raw.isOutgoing -> MessageStatus.IGNORED_CONFIRMATION
+            else -> when (val content = raw.content) {
+                is MessageContent.VisualOnly -> MessageStatus.PENDING
+                is MessageContent.TextOnly -> classifyText(content.body)
+                is MessageContent.VisualWithText -> classifyText(content.body)
+            }
         }
 
         val message = IncomingMessage(
@@ -52,6 +56,8 @@ class ProcessIncomingMessageUseCase(
             sourceApp = raw.sourceApp,
             status = status,
             notificationKey = raw.notificationKey,
+            isRead = raw.isOutgoing,
+            isOutgoing = raw.isOutgoing,
         )
 
         val id = messageRepository.save(message)
@@ -127,7 +133,7 @@ fun groupMessagesByChannel(messages: List<IncomingMessage>): List<ChannelMessage
             ChannelMessageGroup(
                 sourceApp = sourceApp,
                 messages = channelMessages.sortedWith(
-                    compareByDescending<IncomingMessage> { it.timestamp }.thenByDescending { it.id },
+                    compareBy<IncomingMessage> { it.timestamp }.thenBy { it.id },
                 ),
             )
         }

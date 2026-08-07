@@ -1,8 +1,8 @@
 package pl.diplomat.infrastructure.notification
 
 import android.app.Person
-import android.os.Build
 import android.os.Bundle
+import androidx.core.os.BundleCompat
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.VisualMediaKind
@@ -15,32 +15,56 @@ data class ParsedNotification(
     val sourceApp: MessageSourceApp,
     val notificationKey: String,
     val additionalSenderCandidates: List<String> = emptyList(),
+    val isOutgoing: Boolean = false,
 )
 
 class NotificationParser(
     private val placeholders: VisualPlaceholderCatalog,
 ) {
-    fun parse(packageName: String, extras: Bundle, postedAtMillis: Long, notificationKey: String): ParsedNotification? {
-        val sourceApp = resolveSourceApp(packageName) ?: return null
+    fun parse(packageName: String, extras: Bundle, postedAtMillis: Long, notificationKey: String): List<ParsedNotification> {
+        val sourceApp = resolveSourceApp(packageName) ?: return emptyList()
         val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
-        val text = extractNotificationText(extras)
-
-        val senderCandidates = when (sourceApp) {
+        val conversationCandidates = when (sourceApp) {
             MessageSourceApp.SMS -> extractSmsSenderCandidates(title, extras)
             MessageSourceApp.WHATSAPP -> extractWhatsAppSenderCandidates(title, extras)
         }
-        val senderPhone = senderCandidates.firstOrNull() ?: title
-        if (senderPhone.isBlank()) return null
+        val senderPhone = conversationCandidates.firstOrNull() ?: title
+        if (senderPhone.isBlank()) return emptyList()
 
-        val content = resolveContent(text, extras) ?: return null
-
-        return ParsedNotification(
-            senderPhone = senderPhone,
-            content = content,
-            timestamp = postedAtMillis,
-            sourceApp = sourceApp,
+        val threadMessages = extractMessagingStyleMessages(
+            extras = extras,
+            postedAtMillis = postedAtMillis,
             notificationKey = notificationKey,
-            additionalSenderCandidates = senderCandidates.drop(1),
+            conversationCandidates = conversationCandidates,
+        )
+        if (threadMessages.isNotEmpty()) {
+            return threadMessages.mapIndexedNotNull { index, message ->
+                val contentExtras = if (index == threadMessages.lastIndex) extras else Bundle.EMPTY
+                val content = resolveContent(message.text, contentExtras) ?: return@mapIndexedNotNull null
+                ParsedNotification(
+                    senderPhone = senderPhone,
+                    content = content,
+                    timestamp = message.timestamp,
+                    sourceApp = sourceApp,
+                    notificationKey = notificationKey,
+                    additionalSenderCandidates = conversationCandidates.drop(1),
+                    isOutgoing = message.isOutgoing,
+                )
+            }
+        }
+
+        val text = extractNotificationText(extras)
+        val content = resolveContent(text, extras) ?: return emptyList()
+        return listOf(
+            ParsedNotification(
+                senderPhone = senderPhone,
+                content = content,
+                timestamp = postedAtMillis,
+                sourceApp = sourceApp,
+                notificationKey = notificationKey,
+                additionalSenderCandidates = conversationCandidates.drop(1),
+                isOutgoing = false,
+            ),
         )
     }
 
@@ -99,6 +123,7 @@ class NotificationParser(
             sourceApp = parsed.sourceApp,
             notificationKey = parsed.notificationKey,
             additionalSenderCandidates = parsed.additionalSenderCandidates,
+            isOutgoing = parsed.isOutgoing,
         )
 
     companion object {
@@ -121,6 +146,12 @@ class NotificationParser(
             "mms",
             "wiadomości",
             "wiadomosc",
+        )
+
+        private val SELF_SENDER_LABELS = setOf(
+            "you",
+            "ty",
+            "ja",
         )
 
         fun isSupportedPackage(packageName: String): Boolean =
@@ -148,7 +179,15 @@ class NotificationParser(
             ?.joinToString("\n")
             ?.takeIf { it.isNotBlank() }
             ?.let { return it }
-        extractMessagingStylePayload(extras)?.text?.let { return it }
+        extractMessagingStyleMessages(
+            extras = extras,
+            postedAtMillis = 0L,
+            notificationKey = "",
+            conversationCandidates = emptyList(),
+        )
+            .lastOrNull()
+            ?.text
+            ?.let { return it }
         return ""
     }
 
@@ -167,7 +206,9 @@ class NotificationParser(
     private fun extractWhatsAppSenderCandidates(title: String, extras: Bundle): List<String> {
         val candidates = mutableListOf<String>()
         charSequenceFromExtras(extras, "android.conversationTitle")?.let { candidates.add(it) }
-        extractMessagingStylePayload(extras)?.senderCandidates?.let { candidates.addAll(it) }
+        extractMessagingStyleMessages(extras, postedAtMillis = 0L, notificationKey = "", conversationCandidates = emptyList())
+            .flatMap { it.senderCandidates }
+            .let { candidates.addAll(it) }
         charSequenceFromExtras(extras, "android.subText")?.let { candidates.add(it) }
         title.trim().takeIf { it.isNotBlank() }?.let { candidates.add(it) }
         return candidates.distinct()
@@ -184,7 +225,14 @@ class NotificationParser(
             title.trim().takeIf { it.isNotBlank() }?.let { candidates.add(it) }
         }
         charSequenceFromExtras(extras, "android.subText")?.let { candidates.add(it) }
-        extractMessagingStylePayload(extras)?.senderCandidates?.let { candidates.addAll(it) }
+        extractMessagingStyleMessages(
+            extras = extras,
+            postedAtMillis = 0L,
+            notificationKey = "",
+            conversationCandidates = emptyList(),
+        )
+            .flatMap { it.senderCandidates }
+            .let { candidates.addAll(it) }
         if (skipGenericTitle) {
             title.trim().takeIf { it.isNotBlank() }?.let { candidates.add(it) }
         }
@@ -197,36 +245,101 @@ class NotificationParser(
     private fun isGenericMessagingAppTitle(title: String): Boolean =
         title.trim().lowercase() in GENERIC_MESSAGING_TITLES
 
-    private data class MessagingStylePayload(
-        val text: String?,
+    private data class MessagingStyleMessage(
+        val text: String,
+        val timestamp: Long,
         val senderCandidates: List<String>,
+        val isOutgoing: Boolean,
     )
 
     @Suppress("DEPRECATION")
-    private fun extractMessagingStylePayload(extras: Bundle): MessagingStylePayload? {
-        val messages = extras.getParcelableArray("android.messages")
-        if (messages == null || messages.isEmpty()) return null
+    private fun extractMessagingStyleMessages(
+        extras: Bundle,
+        postedAtMillis: Long,
+        notificationKey: String,
+        conversationCandidates: List<String>,
+    ): List<MessagingStyleMessage> {
+        val messages = extras.getParcelableArray("android.messages") ?: return emptyList()
+        if (messages.isEmpty()) return emptyList()
 
-        var lastText: String? = null
-        val senderCandidates = mutableListOf<String>()
-        for (parcelable in messages) {
+        val messagingUser = extractMessagingUser(extras)
+        val parsed = mutableListOf<MessagingStyleMessage>()
+        for ((index, parcelable) in messages.withIndex()) {
             val bundle = parcelable as? Bundle ?: continue
-            bundle.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
-                ?.let { lastText = it }
-            bundle.getCharSequence("sender")?.toString()?.trim()?.takeIf { it.isNotBlank() }
-                ?.let { senderCandidates.add(it) }
-            senderCandidates.addAll(extractSenderPersonCandidates(bundle))
+            val text = bundle.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                ?: continue
+            val senderCandidates = buildList {
+                bundle.getCharSequence("sender")?.toString()?.trim()?.takeIf { it.isNotBlank() }
+                    ?.let { add(it) }
+                addAll(extractSenderPersonCandidates(bundle))
+            }.distinct()
+            val explicitTime = bundle.getLong("time").takeIf { it > 0L }
+            val timestamp = explicitTime
+                ?: if (index == messages.lastIndex && postedAtMillis > 0L) {
+                    postedAtMillis
+                } else {
+                    stableThreadTimestamp(notificationKey, text, index)
+                }
+            val isOutgoing = resolveIsOutgoing(
+                senderCandidates = senderCandidates,
+                conversationCandidates = conversationCandidates,
+                messagingUser = messagingUser,
+                senderPerson = extractSenderPerson(bundle),
+            )
+            parsed.add(
+                MessagingStyleMessage(
+                    text = text,
+                    timestamp = timestamp,
+                    senderCandidates = senderCandidates,
+                    isOutgoing = isOutgoing,
+                ),
+            )
         }
-        if (lastText == null && senderCandidates.isEmpty()) return null
-        return MessagingStylePayload(
-            text = lastText,
-            senderCandidates = senderCandidates.distinct(),
-        )
+        return parsed
     }
 
+    private fun stableThreadTimestamp(notificationKey: String, text: String, index: Int): Long {
+        val hash = (notificationKey + "\u0000" + index + "\u0000" + text).hashCode().toLong()
+        return hash and 0x000FFFFFFFFFFFFFL
+    }
+
+    private fun resolveIsOutgoing(
+        senderCandidates: List<String>,
+        conversationCandidates: List<String>,
+        messagingUser: Person?,
+        senderPerson: Person?,
+    ): Boolean {
+        val normalizedConversation = conversationCandidates.map { it.trim().lowercase() }.toSet()
+        if (senderCandidates.any { candidate ->
+                val normalized = candidate.trim().lowercase()
+                normalized in SELF_SENDER_LABELS && normalized !in normalizedConversation
+            }
+        ) {
+            return true
+        }
+        if (senderPerson != null && messagingUser != null) {
+            return personsRepresentSameUser(senderPerson, messagingUser)
+        }
+        return false
+    }
+
+    private fun personsRepresentSameUser(left: Person, right: Person): Boolean {
+        val leftUri = left.uri?.toString()?.trim()?.lowercase()
+        val rightUri = right.uri?.toString()?.trim()?.lowercase()
+        if (!leftUri.isNullOrBlank() && leftUri == rightUri) return true
+        val leftName = left.name?.toString()?.trim()?.lowercase()
+        val rightName = right.name?.toString()?.trim()?.lowercase()
+        return !leftName.isNullOrBlank() && leftName == rightName
+    }
+
+    private fun extractMessagingUser(extras: Bundle): Person? =
+        BundleCompat.getParcelable(extras, "android.messagingUser", Person::class.java)
+
+    private fun extractSenderPerson(bundle: Bundle): Person? =
+        BundleCompat.getParcelable(bundle, "sender_person", Person::class.java)
+
     private fun extractSenderPersonCandidates(bundle: Bundle): List<String> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return emptyList()
-        val person = bundle.getParcelable("sender_person", Person::class.java) ?: return emptyList()
+        val person = BundleCompat.getParcelable(bundle, "sender_person", Person::class.java) ?: return emptyList()
         val candidates = mutableListOf<String>()
         person.uri?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let { uri ->
             if (uri.startsWith("tel:", ignoreCase = true)) {
