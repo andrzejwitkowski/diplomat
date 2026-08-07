@@ -27,39 +27,44 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val parsed = locator.notificationParser.parse(
+        val parsedMessages = locator.notificationParser.parse(
             packageName = packageName,
             extras = extras,
             postedAtMillis = sbn.postTime,
             notificationKey = sbn.key,
         )
-        if (parsed == null) {
+        if (parsedMessages.isEmpty()) {
             DevLog.log("PARSE", "failed pkg=$packageName")
             return
         }
 
-        DevLog.log(
-            "PARSE",
-            "ok app=${parsed.sourceApp} primarySenderLen=${parsed.senderPhone.length} " +
-                "extraCandidates=${parsed.additionalSenderCandidates.size} " +
-                contentMetadata(parsed.content),
-        )
-
-        val raw = locator.notificationParser.toRaw(parsed)
         locator.applicationScope.launch {
-            when (val result = locator.processIncomingMessage(raw)) {
-                is ProcessIncomingMessageResult.Saved -> {
-                    DevLog.log("RESULT", "saved status=${result.message.status}")
-                    locator.incomingMessageNotifier.notify(result.contact, result.message)
+            for (parsed in parsedMessages) {
+                DevLog.log(
+                    "PARSE",
+                    "ok app=${parsed.sourceApp} outgoing=${parsed.isOutgoing} " +
+                        "primarySenderLen=${parsed.senderPhone.length} " +
+                        "extraCandidates=${parsed.additionalSenderCandidates.size} " +
+                        contentMetadata(parsed.content),
+                )
+
+                val raw = locator.notificationParser.toRaw(parsed)
+                when (val result = locator.processIncomingMessage(raw)) {
+                    is ProcessIncomingMessageResult.Saved -> {
+                        DevLog.log("RESULT", "saved outgoing=${result.message.isOutgoing} status=${result.message.status}")
+                        if (!result.message.isOutgoing) {
+                            locator.incomingMessageNotifier.notify(result.contact, result.message)
+                        }
+                    }
+                    ProcessIncomingMessageResult.RejectedNotWhitelisted ->
+                        DevLog.log(
+                            "RESULT",
+                            "rejected outgoing=${raw.isOutgoing} primarySenderLen=${raw.senderPhone.length} " +
+                                "extraCandidates=${raw.additionalSenderCandidates.size}",
+                        )
+                    ProcessIncomingMessageResult.IgnoredDuplicate ->
+                        DevLog.log("RESULT", "duplicate outgoing=${raw.isOutgoing}")
                 }
-                ProcessIncomingMessageResult.RejectedNotWhitelisted ->
-                    DevLog.log(
-                        "RESULT",
-                        "rejected primarySenderLen=${raw.senderPhone.length} " +
-                            "extraCandidates=${raw.additionalSenderCandidates.size}",
-                    )
-                ProcessIncomingMessageResult.IgnoredDuplicate ->
-                    DevLog.log("RESULT", "duplicate")
             }
         }
     }

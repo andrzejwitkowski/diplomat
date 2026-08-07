@@ -316,4 +316,27 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
         ProcessResultAssertion.assertThat(second).isSaved()
         MessageRepositoryAssertion.assertThat(messageRepository.snapshot()).hasSize(2)
     }
+
+    @Test
+    fun `saves outbound reply as read without pending status`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+
+        val result = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.ALICE_NAME)
+                .withText(TestConstants.TEXT_OK)
+                .withTimestamp(TestConstants.TIMESTAMP_3)
+                .withSourceApp(MessageSourceApp.WHATSAPP)
+                .withIsOutgoing(true)
+                .build(),
+        )
+
+        val assertion = ProcessResultAssertion.assertThat(result)
+        assertion.isSaved {
+            hasStatus(MessageStatus.IGNORED_CONFIRMATION)
+        }
+        val saved = assertion.savedMessage()
+        org.junit.Assert.assertTrue(saved.isOutgoing)
+        org.junit.Assert.assertTrue(saved.isRead)
+    }
 }

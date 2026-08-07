@@ -14,6 +14,37 @@ import pl.diplomat.infrastructure.testsupport.notificationExtras
 class NotificationParserTest : BaseSpec() {
 
     @Test
+    fun parsesWhatsAppConversationThreadWithOutboundMessages() {
+        val parsed = parseNotifications(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withMessagingPersonMessage(
+                    text = TestConstants.TEXT_HELLO,
+                    personName = NotificationTestConstants.WHATSAPP_SENDER,
+                    tel = TestConstants.ALICE_PHONE,
+                )
+                .withMessagingOutgoingMessage(TestConstants.TEXT_OK)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .hasSize(2)
+            .at(0) {
+                isNotNull()
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_HELLO))
+                isOutgoing(false)
+            }
+            .at(1) {
+                isNotNull()
+                hasContent(MessageContent.TextOnly(TestConstants.TEXT_OK))
+                isOutgoing(true)
+            }
+    }
+
+    @Test
     fun parsesSmsMessagingStyleNotificationWithoutStandardText() {
         val parsed = parseNotification(
             packageName = NotificationTestConstants.SMS_PACKAGE,

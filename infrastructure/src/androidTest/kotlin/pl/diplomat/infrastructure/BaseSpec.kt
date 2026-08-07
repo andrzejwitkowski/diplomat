@@ -26,15 +26,27 @@ abstract class BaseSpec {
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(context))
     }
 
-    protected fun parseNotification(
+    protected fun parseNotifications(
         packageName: String = NotificationTestConstants.WHATSAPP_PACKAGE,
         extras: Bundle,
         postedAtMillis: Long,
         notificationKey: String = NotificationTestConstants.DEFAULT_NOTIFICATION_KEY,
-    ): ParsedNotification? = notificationParser.parse(
+    ): List<ParsedNotification> = notificationParser.parse(
         packageName = packageName,
         extras = extras,
         postedAtMillis = postedAtMillis,
         notificationKey = notificationKey,
     )
+
+    protected fun parseNotification(
+        packageName: String = NotificationTestConstants.WHATSAPP_PACKAGE,
+        extras: Bundle,
+        postedAtMillis: Long,
+        notificationKey: String = NotificationTestConstants.DEFAULT_NOTIFICATION_KEY,
+    ): ParsedNotification? = parseNotifications(
+        packageName = packageName,
+        extras = extras,
+        postedAtMillis = postedAtMillis,
+        notificationKey = notificationKey,
+    ).singleOrNull()
 }

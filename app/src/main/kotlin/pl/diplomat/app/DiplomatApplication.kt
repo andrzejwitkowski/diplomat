@@ -25,6 +25,7 @@ import pl.diplomat.infrastructure.persistence.MIGRATION_5_6
 import pl.diplomat.infrastructure.persistence.MIGRATION_6_7
 import pl.diplomat.infrastructure.persistence.MIGRATION_7_8
 import pl.diplomat.infrastructure.persistence.MIGRATION_8_9
+import pl.diplomat.infrastructure.persistence.MIGRATION_10_11
 import pl.diplomat.infrastructure.persistence.MIGRATION_9_10
 import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
@@ -93,6 +94,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
             )
             .build()
 

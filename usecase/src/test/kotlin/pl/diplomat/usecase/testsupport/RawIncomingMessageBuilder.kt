@@ -12,6 +12,7 @@ class RawIncomingMessageBuilder {
     private var sourceApp: MessageSourceApp = MessageSourceApp.SMS
     private var notificationKey: String? = null
     private var additionalSenderCandidates: List<String> = emptyList()
+    private var isOutgoing: Boolean = false
 
     fun withSenderPhone(value: String) = apply { senderPhone = value }
 
@@ -27,6 +28,8 @@ class RawIncomingMessageBuilder {
 
     fun withNotificationKey(value: String?) = apply { notificationKey = value }
 
+    fun withIsOutgoing(value: Boolean) = apply { isOutgoing = value }
+
     fun build(): RawIncomingMessage = RawIncomingMessage(
         senderPhone = senderPhone,
         content = content,
@@ -34,6 +37,7 @@ class RawIncomingMessageBuilder {
         sourceApp = sourceApp,
         notificationKey = notificationKey,
         additionalSenderCandidates = additionalSenderCandidates,
+        isOutgoing = isOutgoing,
     )
 }
 

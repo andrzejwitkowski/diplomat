@@ -34,6 +34,10 @@ class NotificationExtrasBuilder {
         messagingMessages = messagingMessages + (sender to text)
     }
 
+    fun withMessagingOutgoingMessage(text: String) = apply {
+        messagingMessages = messagingMessages + (null to text)
+    }
+
     fun withMessagingPersonMessage(text: String, personName: String, tel: String) = apply {
         val person = Person.Builder()
             .setName(personName)

@@ -4,15 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -108,14 +109,14 @@ fun ConversationDetailScreen(
                     .fillMaxSize()
                     .padding(padding),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 channelGroups.forEach { group ->
                     item(key = "header-${group.sourceApp}") {
                         ChannelSectionHeader(sourceApp = group.sourceApp)
                     }
                     items(group.messages, key = { it.id }) { message ->
-                        ConversationMessageCard(message = message)
+                        ConversationMessageBubble(message = message)
                     }
                 }
             }
@@ -132,56 +133,65 @@ private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
         },
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
     )
 }
 
 @Composable
-private fun ConversationMessageCard(message: IncomingMessage) {
+private fun ConversationMessageBubble(message: IncomingMessage) {
+    val alignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
+    val bubbleColor = if (message.isOutgoing) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val textColor = if (message.isOutgoing) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val timeFormatter = DateFormat.getTimeInstance(DateFormat.SHORT)
     val formattedTime = timeFormatter.format(Date(message.timestamp))
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = alignment,
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(max = 300.dp),
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (message.isOutgoing) 16.dp else 4.dp,
+                bottomEnd = if (message.isOutgoing) 4.dp else 16.dp,
+            ),
+            color = bubbleColor,
         ) {
-            RowWithBadges(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                if (!message.isOutgoing) {
+                    MessageChannelStatusBadges(
+                        status = message.status,
+                        sourceApp = message.sourceApp,
+                    )
+                }
+                Text(
+                    text = message.content.previewText(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor,
+                )
                 Text(
                     text = formattedTime,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MessageChannelStatusBadges(
-                    status = message.status,
-                    sourceApp = message.sourceApp,
+                    color = textColor.copy(alpha = 0.7f),
+                    modifier = Modifier.align(Alignment.End),
                 )
             }
-            Text(
-                text = message.content.previewText(),
-                style = MaterialTheme.typography.bodyMedium,
-            )
         }
-    }
-}
-
-@Composable
-private fun RowWithBadges(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    content: @Composable () -> Unit,
-) {
-    androidx.compose.foundation.layout.Row(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        content()
     }
 }
 
@@ -190,7 +200,7 @@ internal fun MessageChannelStatusBadges(
     status: MessageStatus,
     sourceApp: MessageSourceApp,
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
