@@ -50,6 +50,45 @@ class NotificationParserTest : BaseSpec() {
     }
 
     @Test
+    fun parsesWhatsAppNotificationFromSenderPersonTel() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle("message snip")
+                .withMessagingPersonMessage(
+                    text = TestConstants.TEXT_WHATSAPP,
+                    personName = NotificationTestConstants.WHATSAPP_SENDER,
+                    tel = TestConstants.ALICE_PHONE,
+                )
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasSourceApp(MessageSourceApp.WHATSAPP)
+            .hasSenderPhone(TestConstants.ALICE_PHONE)
+            .hasContent(MessageContent.TextOnly(TestConstants.TEXT_WHATSAPP))
+    }
+
+    @Test
+    fun parsesWhatsAppNotificationWithSpannableConversationTitle() {
+        val parsed = parseNotification(
+            packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
+            extras = notificationExtras()
+                .withTitle("ignored title")
+                .withSpannableConversationTitle(NotificationTestConstants.WHATSAPP_SENDER)
+                .withText(TestConstants.TEXT_WHATSAPP)
+                .build(),
+            postedAtMillis = NotificationTestConstants.TIMESTAMP_WHATSAPP,
+        )
+
+        ParsedNotificationAssertion.assertThat(parsed)
+            .isNotNull()
+            .hasSenderPhone(NotificationTestConstants.WHATSAPP_SENDER)
+    }
+
+    @Test
     fun parsesWhatsAppNotification() {
         val parsed = parseNotification(
             packageName = NotificationTestConstants.WHATSAPP_PACKAGE,
