@@ -33,8 +33,9 @@ class NotificationParser(
 
         val threadMessages = extractMessagingStyleMessages(extras, postedAtMillis, sourceApp)
         if (threadMessages.isNotEmpty()) {
-            return threadMessages.mapNotNull { message ->
-                val content = resolveContent(message.text, extras) ?: return@mapNotNull null
+            return threadMessages.mapIndexedNotNull { index, message ->
+                val contentExtras = if (index == threadMessages.lastIndex) extras else Bundle.EMPTY
+                val content = resolveContent(message.text, contentExtras) ?: return@mapIndexedNotNull null
                 ParsedNotification(
                     senderPhone = senderPhone,
                     content = content,
@@ -259,7 +260,6 @@ class NotificationParser(
             val timestamp = bundle.getLong("time").takeIf { it > 0L }
                 ?: (postedAtMillis - (messages.size - 1 - index))
             val isOutgoing = resolveIsOutgoing(
-                sourceApp = sourceApp,
                 senderCandidates = senderCandidates,
                 messagingUser = messagingUser,
                 senderPerson = extractSenderPerson(bundle),
@@ -277,21 +277,17 @@ class NotificationParser(
     }
 
     private fun resolveIsOutgoing(
-        sourceApp: MessageSourceApp,
         senderCandidates: List<String>,
         messagingUser: Person?,
         senderPerson: Person?,
     ): Boolean {
-        if (senderPerson != null && messagingUser != null) {
-            return personsRepresentSameUser(senderPerson, messagingUser)
-        }
         if (senderCandidates.any { it.trim().lowercase() in SELF_SENDER_LABELS }) {
             return true
         }
-        return when (sourceApp) {
-            MessageSourceApp.WHATSAPP -> senderCandidates.isEmpty()
-            MessageSourceApp.SMS -> false
+        if (senderPerson != null && messagingUser != null) {
+            return personsRepresentSameUser(senderPerson, messagingUser)
         }
+        return false
     }
 
     private fun personsRepresentSameUser(left: Person, right: Person): Boolean {

@@ -62,6 +62,7 @@ class ParsedNotificationsAssertion private constructor(
     fun at(index: Int, block: ParsedNotificationAssertion.() -> Unit): ParsedNotificationsAssertion = apply {
         ParsedNotificationAssertion.assertThat(actual[index]).block()
     }
+}
 
 class MessageEntityAssertion private constructor(
     private val actual: IncomingMessageEntity,
