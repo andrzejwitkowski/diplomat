@@ -428,8 +428,8 @@ internal fun ChannelBadge(sourceApp: MessageSourceApp) {
     ) {
         Text(
             text = when (sourceApp) {
-                MessageSourceApp.SMS -> "SMS"
-                MessageSourceApp.WHATSAPP -> "WA"
+                MessageSourceApp.SMS -> stringResource(R.string.channel_sms_badge)
+                MessageSourceApp.WHATSAPP -> stringResource(R.string.channel_whatsapp_badge)
             },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
