@@ -218,6 +218,28 @@ class RoomMessageRepositoryIntegrationTest : BaseRoomIntegrationSpec() {
     }
 
     @Test
+    fun ignoresNotificationRepostedWithDifferentTimestamp() = runTest {
+        val contactId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        val notificationKey = "shared-notification-key"
+        val message = anIncomingMessage()
+            .withContactId(contactId)
+            .withText(TestConstants.TEXT_HELLO)
+            .withTimestamp(TestConstants.TIMESTAMP_1)
+            .withNotificationKey(notificationKey)
+            .build()
+
+        val firstId = messageRepository.save(message)
+        val repostId = messageRepository.save(
+            message.copy(timestamp = TestConstants.TIMESTAMP_2),
+        )
+
+        org.junit.Assert.assertTrue(firstId > 0)
+        org.junit.Assert.assertEquals(-1L, repostId)
+        MessageHistoryAssertion.assertThat(messageRepository.findMessagesByContactId(contactId))
+            .hasSize(1)
+    }
+
+    @Test
     fun savesDistinctMessagesSharingNotificationKey() = runTest {
         val contactId = contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
         val notificationKey = "shared-notification-key"

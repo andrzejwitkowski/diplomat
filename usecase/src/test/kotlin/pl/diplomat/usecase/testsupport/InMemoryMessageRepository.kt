@@ -16,13 +16,8 @@ class InMemoryMessageRepository(
     private var nextId = 1L
 
     override suspend fun save(message: IncomingMessage): Long {
-        if (message.notificationKey != null &&
-            messages.value.any { existing ->
-                existing.notificationKey == message.notificationKey &&
-                    existing.timestamp == message.timestamp &&
-                    existing.content == message.content
-            }
-        ) {
+        val sinceTimestamp = message.timestamp - DUPLICATE_WINDOW_MS
+        if (messages.value.any { existing -> existing.isRecentDuplicateOf(message, sinceTimestamp) }) {
             return -1L
         }
         val id = if (message.id == 0L) nextId++ else message.id
@@ -69,4 +64,19 @@ class InMemoryMessageRepository(
     }
 
     fun snapshot(): List<IncomingMessage> = messages.value
+
+    companion object {
+        private const val DUPLICATE_WINDOW_MS = 60_000L
+    }
+}
+
+private fun IncomingMessage.isRecentDuplicateOf(
+    candidate: IncomingMessage,
+    sinceTimestamp: Long,
+): Boolean {
+    if (content != candidate.content || timestamp < sinceTimestamp) return false
+    return when (val key = candidate.notificationKey) {
+        null -> contactId == candidate.contactId && notificationKey == null
+        else -> notificationKey == key
+    }
 }

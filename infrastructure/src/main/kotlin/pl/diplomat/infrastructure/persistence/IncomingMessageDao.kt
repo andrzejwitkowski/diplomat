@@ -13,6 +13,43 @@ interface IncomingMessageDao {
 
     @Query(
         """
+        SELECT COUNT(*) > 0 FROM incoming_messages
+        WHERE notificationKey = :notificationKey
+          AND text = :text
+          AND contentType = :contentType
+          AND mediaKind = :mediaKind
+          AND timestamp >= :sinceTimestamp
+        """,
+    )
+    suspend fun hasRecentDuplicateByNotificationKey(
+        notificationKey: String,
+        text: String,
+        contentType: String,
+        mediaKind: String,
+        sinceTimestamp: Long,
+    ): Boolean
+
+    @Query(
+        """
+        SELECT COUNT(*) > 0 FROM incoming_messages
+        WHERE contactId = :contactId
+          AND notificationKey IS NULL
+          AND text = :text
+          AND contentType = :contentType
+          AND mediaKind = :mediaKind
+          AND timestamp >= :sinceTimestamp
+        """,
+    )
+    suspend fun hasRecentDuplicateByContact(
+        contactId: Long,
+        text: String,
+        contentType: String,
+        mediaKind: String,
+        sinceTimestamp: Long,
+    ): Boolean
+
+    @Query(
+        """
         SELECT m.*
         FROM incoming_messages m
         WHERE m.id = (

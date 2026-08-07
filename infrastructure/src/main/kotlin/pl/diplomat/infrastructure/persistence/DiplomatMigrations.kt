@@ -93,6 +93,35 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            DELETE FROM incoming_messages
+            WHERE notificationKey IS NOT NULL
+              AND id NOT IN (
+                  SELECT MIN(id)
+                  FROM incoming_messages
+                  WHERE notificationKey IS NOT NULL
+                  GROUP BY notificationKey, text, contentType, mediaKind
+              )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            DELETE FROM incoming_messages
+            WHERE notificationKey IS NULL
+              AND id NOT IN (
+                  SELECT MIN(id)
+                  FROM incoming_messages
+                  WHERE notificationKey IS NULL
+                  GROUP BY contactId, text, contentType, mediaKind
+              )
+            """.trimIndent(),
+        )
+    }
+}
+
 val MIGRATION_7_8 = object : Migration(7, 8) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
