@@ -1,6 +1,9 @@
 package pl.diplomat.presentation.dashboard
 
-import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import android.os.Build
 import android.os.Build.VERSION_CODES
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +58,7 @@ import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
+import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
@@ -127,6 +131,9 @@ fun DashboardRoute(
                     viewModel.onThreadClick(thread)
                     onThreadClick(thread)
                 },
+                onCopyDebugLogs = {
+                    copyDebugLogsToClipboard(context, state.buildInfo)
+                },
             )
         }
     }
@@ -143,6 +150,7 @@ fun DashboardScreen(
     onRequestPostNotifications: () -> Unit,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
+    onCopyDebugLogs: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -179,7 +187,10 @@ fun DashboardScreen(
                 )
             }
 
-            BuildInfoFooter(buildInfo)
+            BuildInfoFooter(
+                buildInfo = buildInfo,
+                onCopyDebugLogs = onCopyDebugLogs,
+            )
 
             if (conversations.isEmpty()) {
                 Box(
@@ -210,7 +221,10 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun BuildInfoFooter(buildInfo: AppBuildInfo) {
+private fun BuildInfoFooter(
+    buildInfo: AppBuildInfo,
+    onCopyDebugLogs: () -> Unit,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -236,8 +250,25 @@ private fun BuildInfoFooter(buildInfo: AppBuildInfo) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(
+                onClick = onCopyDebugLogs,
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.copy_debug_logs),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
     }
+}
+
+private fun copyDebugLogsToClipboard(context: Context, buildInfo: AppBuildInfo) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("Diplomat debug logs", DevLog.dumpForExport(buildInfo)),
+    )
+    Toast.makeText(context, context.getString(R.string.debug_logs_copied), Toast.LENGTH_SHORT).show()
 }
 
 @Composable
