@@ -14,6 +14,7 @@ import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
 import pl.diplomat.infrastructure.adapter.LocalAvatarStorageAdapter
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
+import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.persistence.DiplomatDatabase
 import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
@@ -68,6 +69,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         notificationParser = NotificationParser(VisualPlaceholderCatalog.fromContext(this))
         IncomingMessageNotifier.ensureChannel(this)
         incomingMessageNotifier = IncomingMessageNotifier(this)
+        DevLog.log("APP", "started version=${buildInfo.versionName} commit=${buildInfo.gitCommitHash}")
 
         val normalization = NormalizationService.default
 

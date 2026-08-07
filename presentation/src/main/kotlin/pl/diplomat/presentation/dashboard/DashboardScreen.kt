@@ -1,5 +1,13 @@
 package pl.diplomat.presentation.dashboard
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import android.os.Build
+import android.os.Build.VERSION_CODES
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,9 +58,11 @@ import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
+import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
+import pl.diplomat.infrastructure.notification.PostNotificationsPermission
 import pl.diplomat.presentation.R
 import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
@@ -68,12 +78,20 @@ fun DashboardRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val requestPostNotifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.refreshPostNotificationsPermission(granted)
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshNotificationListenerPermission(
                     NotificationListenerPermission.isGranted(context),
+                )
+                viewModel.refreshPostNotificationsPermission(
+                    PostNotificationsPermission.isGranted(context),
                 )
             }
         }
@@ -98,14 +116,23 @@ fun DashboardRoute(
             DashboardScreen(
                 conversations = state.conversations,
                 isNotificationListenerEnabled = state.isNotificationListenerEnabled,
+                isPostNotificationsEnabled = state.isPostNotificationsEnabled,
                 buildInfo = state.buildInfo,
                 onOpenNotificationSettings = {
                     context.startActivity(NotificationListenerPermission.settingsIntent())
+                },
+                onRequestPostNotifications = {
+                    if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+                        requestPostNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                 },
                 onOpenWhitelist = onOpenWhitelist,
                 onThreadClick = { thread ->
                     viewModel.onThreadClick(thread)
                     onThreadClick(thread)
+                },
+                onCopyDebugLogs = {
+                    copyDebugLogsToClipboard(context, state.buildInfo)
                 },
             )
         }
@@ -117,10 +144,13 @@ fun DashboardRoute(
 fun DashboardScreen(
     conversations: List<ConversationThread>,
     isNotificationListenerEnabled: Boolean,
+    isPostNotificationsEnabled: Boolean,
     buildInfo: AppBuildInfo,
     onOpenNotificationSettings: () -> Unit,
+    onRequestPostNotifications: () -> Unit,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
+    onCopyDebugLogs: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -142,10 +172,25 @@ fun DashboardScreen(
                 .padding(padding),
         ) {
             if (!isNotificationListenerEnabled) {
-                NotificationPermissionBanner(onOpenNotificationSettings)
+                NotificationPermissionBanner(
+                    message = stringResource(R.string.notification_listener_required),
+                    actionLabel = stringResource(R.string.open_settings),
+                    onAction = onOpenNotificationSettings,
+                )
             }
 
-            BuildInfoFooter(buildInfo)
+            if (isNotificationListenerEnabled && !isPostNotificationsEnabled) {
+                NotificationPermissionBanner(
+                    message = stringResource(R.string.post_notifications_required),
+                    actionLabel = stringResource(R.string.grant_permission),
+                    onAction = onRequestPostNotifications,
+                )
+            }
+
+            BuildInfoFooter(
+                buildInfo = buildInfo,
+                onCopyDebugLogs = onCopyDebugLogs,
+            )
 
             if (conversations.isEmpty()) {
                 Box(
@@ -176,7 +221,10 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun BuildInfoFooter(buildInfo: AppBuildInfo) {
+private fun BuildInfoFooter(
+    buildInfo: AppBuildInfo,
+    onCopyDebugLogs: () -> Unit,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -202,12 +250,33 @@ private fun BuildInfoFooter(buildInfo: AppBuildInfo) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(
+                onClick = onCopyDebugLogs,
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.copy_debug_logs),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
     }
 }
 
+private fun copyDebugLogsToClipboard(context: Context, buildInfo: AppBuildInfo) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("Diplomat debug logs", DevLog.dumpForExport(buildInfo)),
+    )
+    Toast.makeText(context, context.getString(R.string.debug_logs_copied), Toast.LENGTH_SHORT).show()
+}
+
 @Composable
-private fun NotificationPermissionBanner(onOpenSettings: () -> Unit) {
+private fun NotificationPermissionBanner(
+    message: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.errorContainer,
@@ -220,13 +289,13 @@ private fun NotificationPermissionBanner(onOpenSettings: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.notification_listener_required),
+                text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onOpenSettings) {
-                Text(stringResource(R.string.open_settings))
+            TextButton(onClick = onAction) {
+                Text(actionLabel)
             }
         }
     }

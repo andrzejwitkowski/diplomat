@@ -1,6 +1,7 @@
 package pl.diplomat.usecase
 
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
@@ -165,6 +166,44 @@ class ProcessIncomingMessageUseCaseTest : BaseProcessIncomingMessageSpec() {
         )
 
         ProcessResultAssertion.assertThat(result).isSaved()
+    }
+
+    @Test
+    fun `prefers primary sender over additional candidates when both match`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+        contactRepository.add(TestConstants.BOB_NAME, PhoneNumber(TestConstants.BOB_PHONE))
+
+        val result = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone(TestConstants.BOB_NAME)
+                .withAdditionalSenderCandidates(listOf(TestConstants.ALICE_NAME))
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withSourceApp(MessageSourceApp.SMS)
+                .build(),
+        )
+
+        val bobId = contactRepository.findByDisplayName(TestConstants.BOB_NAME)!!.id
+        ProcessResultAssertion.assertThat(result).isSaved()
+        assertEquals(bobId, (result as ProcessIncomingMessageResult.Saved).contact.id)
+    }
+
+    @Test
+    fun `resolves contact from additional sender candidate when primary sender mismatches`() = runTest {
+        contactRepository.add(TestConstants.ALICE_NAME, PhoneNumber(TestConstants.ALICE_PHONE_FORMATTED))
+
+        val result = useCase(
+            aRawIncomingMessage()
+                .withSenderPhone("Messages")
+                .withAdditionalSenderCandidates(listOf(TestConstants.ALICE_NAME))
+                .withText(TestConstants.TEXT_LONG)
+                .withTimestamp(TestConstants.TIMESTAMP_2)
+                .withSourceApp(MessageSourceApp.SMS)
+                .build(),
+        )
+
+        ProcessResultAssertion.assertThat(result)
+            .isSaved { hasStatus(MessageStatus.PENDING) }
     }
 
     @Test

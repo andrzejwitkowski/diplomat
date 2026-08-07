@@ -8,6 +8,7 @@ class NotificationExtrasBuilder {
     private var text: String? = null
     private var conversationTitle: String? = null
     private var picture: Bitmap? = null
+    private var messagingMessages: List<Pair<String?, String?>> = emptyList()
 
     fun withTitle(value: String) = apply { title = value }
 
@@ -21,11 +22,26 @@ class NotificationExtrasBuilder {
         picture = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     }
 
+    fun withMessagingMessage(text: String, sender: String? = null) = apply {
+        messagingMessages = messagingMessages + (sender to text)
+    }
+
     fun build(): Bundle = Bundle().apply {
         title?.let { putCharSequence("android.title", it) }
         text?.let { putCharSequence("android.text", it) }
         conversationTitle?.let { putString("android.conversationTitle", it) }
         picture?.let { putParcelable("android.picture", it) }
+        if (messagingMessages.isNotEmpty()) {
+            putParcelableArray(
+                "android.messages",
+                messagingMessages.map { (sender, messageText) ->
+                    Bundle().apply {
+                        putCharSequence("text", messageText)
+                        sender?.let { putCharSequence("sender", it) }
+                    }
+                }.toTypedArray(),
+            )
+        }
     }
 }
 
