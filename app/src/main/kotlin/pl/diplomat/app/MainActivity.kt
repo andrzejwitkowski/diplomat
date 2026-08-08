@@ -23,6 +23,14 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { /* picker will prompt again if denied */ }
 
+    private val requestSmsPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            (application as DiplomatApplication).startSmsInboxObserver()
+        }
+    }
+
     private val requestNotificationsPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { /* foreground service still runs; alerts need this on API 33+ */ }
@@ -30,6 +38,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureContactsPermission()
+        ensureSmsPermission()
         ensureNotificationsPermission()
         DiplomatForegroundService.startSafely(this)
         enableEdgeToEdge()
@@ -58,6 +67,16 @@ class MainActivity : ComponentActivity() {
             != PackageManager.PERMISSION_GRANTED
         ) {
             requestContactsPermission.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    private fun ensureSmsPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestSmsPermission.launch(Manifest.permission.READ_SMS)
+        } else {
+            (application as DiplomatApplication).startSmsInboxObserver()
         }
     }
 

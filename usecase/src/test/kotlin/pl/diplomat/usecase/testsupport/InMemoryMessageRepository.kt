@@ -81,15 +81,8 @@ private fun IncomingMessage.isRecentDuplicateOf(
     candidate: IncomingMessage,
     sinceTimestamp: Long,
     untilTimestamp: Long,
-): Boolean {
-    if (content != candidate.content ||
-        timestamp !in sinceTimestamp..untilTimestamp ||
-        isOutgoing != candidate.isOutgoing
-    ) {
-        return false
-    }
-    return when (val key = candidate.notificationKey) {
-        null -> contactId == candidate.contactId && notificationKey == null
-        else -> notificationKey == key
-    }
-}
+): Boolean =
+    contactId == candidate.contactId &&
+        content == candidate.content &&
+        isOutgoing == candidate.isOutgoing &&
+        timestamp in sinceTimestamp..untilTimestamp
