@@ -51,6 +51,10 @@ android {
         null
     }
 
+    check(System.getenv("DIPLOMAT_REQUIRE_CI_SIGNING") != "true" || ciSigning != null) {
+        "CI signing is required but the keystore or signing credentials are missing."
+    }
+
     buildTypes {
         debug {
             if (ciSigning != null) {

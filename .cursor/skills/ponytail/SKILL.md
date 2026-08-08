@@ -5,14 +5,15 @@ description: >
   minimal. Channels a senior dev who has seen everything: question whether the
   task needs to exist at all (YAGNI), reach for the standard library before
   custom code, native platform features before dependencies, one line before
-  fifty. Supports intensity levels: lite, full (default), ultra. Use on ANY
-  coding task: writing, adding, refactoring, fixing, reviewing, or designing
-  code, and choosing libraries or dependencies. Also use whenever the user
-  says "ponytail", "be lazy", "lazy mode", "simplest solution", "minimal
-  solution", "yagni", "do less", or "shortest path", or complains about
-  over-engineering, bloat, boilerplate, or unnecessary dependencies. Do NOT
-  use for non-coding requests (general knowledge, prose, translation,
-  summaries, recipes).
+  fifty. Supports intensity levels: lite, full (default), ultra. Use on coding
+  construction: writing, adding, refactoring, fixing, or designing code, and
+  choosing libraries or dependencies. Finish-gate review uses deslop then
+  thermo-nuclear (see .cursor/rules/agent-skills.mdc), not this skill. Also use
+  whenever the user says "ponytail", "be lazy", "lazy mode", "simplest
+  solution", "minimal solution", "yagni", "do less", or "shortest path", or
+  complains about over-engineering, bloat, boilerplate, or unnecessary
+  dependencies. Do NOT use for non-coding requests (general knowledge, prose,
+  translation, summaries, recipes).
 argument-hint: "[lite|full|ultra]"
 license: MIT
 ---
@@ -25,9 +26,10 @@ code is the code never written.
 
 ## Persistence
 
-ACTIVE EVERY RESPONSE. No drift back to over-building. Still active if
-unsure. Off only: "stop ponytail" / "normal mode". Default: **full**.
-Switch: `/ponytail lite|full|ultra`.
+ACTIVE while constructing code (write / fix / design / refactor). No drift back
+to over-building. Still active if unsure. Off only: "stop ponytail" /
+"normal mode", or when running the project finish gate (deslop then
+thermo-nuclear). Default: **full**. Switch: `/ponytail lite|full|ultra`.
 
 ## The ladder
 
@@ -36,7 +38,7 @@ Stop at the first rung that holds:
 1. **Does this need to exist at all?** Speculative need = skip it, say so in one line. (YAGNI)
 2. **Already in this codebase?** A helper, util, type, or pattern that already lives here → reuse it. Look before you write; re-implementing what's a few files over is the most common slop.
 3. **Stdlib does it?** Use it.
-4. **Native platform feature covers it?** ` ` over a picker lib, CSS over JS, DB constraint over app code.
+4. **Native platform feature covers it?** Platform date picker / HTML date input over a picker lib, CSS over JS, DB constraint over app code.
 5. **Already-installed dependency solves it?** Use it. Never add a new one for what a few lines can do.
 6. **Can it be one line?** One line.
 7. **Only then:** the minimum code that works.
@@ -65,12 +67,12 @@ every sibling caller still broken. Fix it once, where all callers route through.
 
 ## Output
 
-Code first. Then at most three short lines: what was skipped, when to add it.
-No essays, no feature tours, no design notes. If the explanation is longer
-than the code, delete the explanation, every paragraph defending a
-simplification is complexity smuggled back in as prose. Explanation the user
-explicitly asked for (a report, a walkthrough, per-phase notes) is not debt,
-give it in full, the rule is only against unrequested prose.
+For implementation tasks: code first. Then at most three short lines: what was
+skipped, when to add it. No essays, no feature tours, no design notes. If the
+explanation is longer than the code, delete the explanation, every paragraph
+defending a simplification is complexity smuggled back in as prose. Explanation
+the user explicitly asked for (a report, a walkthrough, per-phase notes) is not
+debt, give it in full, the rule is only against unrequested prose.
 
 Pattern: `[code] → skipped: [X], add when [Y].`
 
@@ -113,8 +115,9 @@ test, YAGNI applies to tests too.
 
 ## Boundaries
 
-Ponytail governs what you build, not how you talk (pair with Caveman for
-terse prose). "stop ponytail" / "normal mode": revert. Level persists until
-changed or session end.
+Ponytail governs coding construction (what you build), not how you talk (pair
+with Caveman for terse prose) and not the finish-gate review (deslop then
+thermo-nuclear per `.cursor/rules/agent-skills.mdc`). "stop ponytail" /
+"normal mode": revert. Level persists until changed or session end.
 
 The shortest path to done is the right path.

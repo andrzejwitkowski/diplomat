@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipInputStream
@@ -68,26 +70,28 @@ class OtaUpdateManager(
                 error("Download failed: HTTP $code")
             }
             val length = connection.contentLengthLong.takeIf { it > 0 }
+            if (length != null && length > MAX_OTA_BYTES) {
+                error("Update artifact exceeds the supported size")
+            }
             var lastPercent = -1
             if (length == null) onProgress(null)
-            connection.inputStream.use { input ->
-                FileOutputStream(dest).use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var readTotal = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        output.write(buffer, 0, read)
-                        readTotal += read
-                        if (length != null) {
-                            val percent = ((readTotal * 100) / length).toInt().coerceIn(0, 100)
-                            if (percent != lastPercent) {
-                                lastPercent = percent
-                                onProgress(percent)
+            try {
+                connection.inputStream.use { input ->
+                    FileOutputStream(dest).use { output ->
+                        copyBounded(input, output, MAX_OTA_BYTES) { readTotal ->
+                            if (length != null) {
+                                val percent = ((readTotal * 100) / length).toInt().coerceIn(0, 100)
+                                if (percent != lastPercent) {
+                                    lastPercent = percent
+                                    onProgress(percent)
+                                }
                             }
                         }
                     }
                 }
+            } catch (error: Throwable) {
+                dest.delete()
+                throw error
             }
             return dest
         } finally {
@@ -102,18 +106,25 @@ class OtaUpdateManager(
         }
         if (!isZip(downloaded)) error("Not a valid APK or ZIP")
         val apk = File(otaDir, "update.apk")
-        ZipInputStream(downloaded.inputStream().buffered()).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
-                    FileOutputStream(apk).use { zip.copyTo(it) }
+        try {
+            ZipInputStream(downloaded.inputStream().buffered()).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
+                        FileOutputStream(apk).use { output ->
+                            copyBounded(zip, output, MAX_OTA_BYTES)
+                        }
+                        zip.closeEntry()
+                        downloaded.delete()
+                        return apk
+                    }
                     zip.closeEntry()
-                    downloaded.delete()
-                    return apk
+                    entry = zip.nextEntry
                 }
-                zip.closeEntry()
-                entry = zip.nextEntry
             }
+        } catch (error: Throwable) {
+            apk.delete()
+            throw error
         }
         error("ZIP has no APK")
     }
@@ -155,4 +166,28 @@ class OtaUpdateManager(
     @Suppress("DEPRECATION")
     private fun versionCode(info: PackageInfo): Long =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
+
+    private companion object {
+        const val MAX_OTA_BYTES = 200L * 1024 * 1024
+
+        fun copyBounded(
+            input: InputStream,
+            output: OutputStream,
+            maxBytes: Long,
+            onBytes: (Long) -> Unit = {},
+        ) {
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var readTotal = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (readTotal + read > maxBytes) {
+                    error("Update artifact exceeds the supported size")
+                }
+                output.write(buffer, 0, read)
+                readTotal += read
+                onBytes(readTotal)
+            }
+        }
+    }
 }

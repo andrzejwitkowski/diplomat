@@ -63,6 +63,7 @@ jobs:
       - name: Build debug APK
         if: steps.tag_check.outputs.skip != 'true'
         env:
+          DIPLOMAT_REQUIRE_CI_SIGNING: "true"
           DIPLOMAT_KEYSTORE_PASSWORD: ${{ secrets.DIPLOMAT_KEYSTORE_PASSWORD }}
           DIPLOMAT_KEY_ALIAS: ${{ secrets.DIPLOMAT_KEY_ALIAS }}
           DIPLOMAT_KEY_PASSWORD: ${{ secrets.DIPLOMAT_KEY_PASSWORD }}

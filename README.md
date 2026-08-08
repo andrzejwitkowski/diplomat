@@ -44,7 +44,7 @@ CI must sign every shippable APK with the **same** keystore so updates install o
 ```bash
 keytool -genkeypair -v -keystore diplomat-ci.jks -alias diplomat \
   -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 diplomat-ci.jks > diplomat-ci.jks.b64
+base64 < diplomat-ci.jks | tr -d '\n' > diplomat-ci.jks.b64
 ```
 
 2. Add GitHub Actions secrets:
