@@ -1,0 +1,23 @@
+name: Decode CI keystore
+description: Decode DIPLOMAT_KEYSTORE_BASE64 into RUNNER_TEMP and export DIPLOMAT_KEYSTORE_FILE
+
+inputs:
+  keystore_base64:
+    description: Base64-encoded JKS contents
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Decode keystore
+      shell: bash
+      env:
+        DIPLOMAT_KEYSTORE_BASE64: ${{ inputs.keystore_base64 }}
+      run: |
+        if [ -z "$DIPLOMAT_KEYSTORE_BASE64" ]; then
+          echo "DIPLOMAT_KEYSTORE_BASE64 secret missing; builds will use the runner debug keystore." >&2
+          exit 0
+        fi
+        echo "$DIPLOMAT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/diplomat-ci.jks"
+        echo "DIPLOMAT_KEYSTORE_FILE=$RUNNER_TEMP/diplomat-ci.jks" >> "$GITHUB_ENV"

@@ -63,6 +63,8 @@ import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
+import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
+import pl.diplomat.presentation.ota.OtaUpdateSection
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
 import pl.diplomat.infrastructure.notification.PostNotificationsPermission
 import pl.diplomat.presentation.R
@@ -74,6 +76,7 @@ import java.util.Date
 @Composable
 fun DashboardRoute(
     viewModel: DashboardViewModel,
+    otaUpdateViewModel: OtaUpdateViewModel,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
 ) {
@@ -120,6 +123,7 @@ fun DashboardRoute(
                 isNotificationListenerEnabled = state.isNotificationListenerEnabled,
                 isPostNotificationsEnabled = state.isPostNotificationsEnabled,
                 buildInfo = state.buildInfo,
+                otaUpdateViewModel = otaUpdateViewModel,
                 onOpenNotificationSettings = {
                     context.startActivity(NotificationListenerPermission.settingsIntent())
                 },
@@ -148,6 +152,7 @@ fun DashboardScreen(
     isNotificationListenerEnabled: Boolean,
     isPostNotificationsEnabled: Boolean,
     buildInfo: AppBuildInfo,
+    otaUpdateViewModel: OtaUpdateViewModel,
     onOpenNotificationSettings: () -> Unit,
     onRequestPostNotifications: () -> Unit,
     onOpenWhitelist: () -> Unit,
@@ -191,6 +196,7 @@ fun DashboardScreen(
 
             BuildInfoFooter(
                 buildInfo = buildInfo,
+                otaUpdateViewModel = otaUpdateViewModel,
                 onCopyDebugLogs = onCopyDebugLogs,
             )
 
@@ -225,6 +231,7 @@ fun DashboardScreen(
 @Composable
 private fun BuildInfoFooter(
     buildInfo: AppBuildInfo,
+    otaUpdateViewModel: OtaUpdateViewModel,
     onCopyDebugLogs: () -> Unit,
 ) {
     Surface(
@@ -261,6 +268,7 @@ private fun BuildInfoFooter(
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
+            OtaUpdateSection(viewModel = otaUpdateViewModel)
         }
     }
 }

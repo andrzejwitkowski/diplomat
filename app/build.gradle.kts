@@ -31,13 +31,41 @@ android {
         buildConfigField("String", "APK_BUILT_AT", "\"unknown\"")
     }
 
+    val ciKeystoreFile = System.getenv("DIPLOMAT_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }
+    val ciKeystorePassword = System.getenv("DIPLOMAT_KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() }
+    val ciKeyAlias = System.getenv("DIPLOMAT_KEY_ALIAS")?.takeIf { it.isNotBlank() }
+    val ciKeyPassword = System.getenv("DIPLOMAT_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+    val ciSigning = if (
+        ciKeystoreFile != null &&
+        ciKeystorePassword != null &&
+        ciKeyAlias != null &&
+        ciKeyPassword != null
+    ) {
+        signingConfigs.create("ci") {
+            storeFile = file(ciKeystoreFile)
+            storePassword = ciKeystorePassword
+            keyAlias = ciKeyAlias
+            keyPassword = ciKeyPassword
+        }
+    } else {
+        null
+    }
+
     buildTypes {
+        debug {
+            if (ciSigning != null) {
+                signingConfig = ciSigning
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (ciSigning != null) {
+                signingConfig = ciSigning
+            }
         }
     }
 

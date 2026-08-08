@@ -54,8 +54,18 @@ jobs:
         if: steps.tag_check.outputs.skip != 'true'
         run: chmod +x gradlew
 
+      - name: Decode CI keystore
+        if: steps.tag_check.outputs.skip != 'true'
+        uses: ./.github/actions/decode-ci-keystore
+        with:
+          keystore_base64: ${{ secrets.DIPLOMAT_KEYSTORE_BASE64 }}
+
       - name: Build debug APK
         if: steps.tag_check.outputs.skip != 'true'
+        env:
+          DIPLOMAT_KEYSTORE_PASSWORD: ${{ secrets.DIPLOMAT_KEYSTORE_PASSWORD }}
+          DIPLOMAT_KEY_ALIAS: ${{ secrets.DIPLOMAT_KEY_ALIAS }}
+          DIPLOMAT_KEY_PASSWORD: ${{ secrets.DIPLOMAT_KEY_PASSWORD }}
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Create GitHub Release

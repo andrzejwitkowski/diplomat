@@ -1,0 +1,16 @@
+---
+description: Always-on skill workflow — ponytail while writing; deslop + thermo-nuclear before done
+alwaysApply: true
+---
+
+# Agent skills (always on)
+
+Read and follow the project skills under `.cursor/skills/`.
+
+## Precedence
+
+1. **While writing** → [`.cursor/skills/ponytail/SKILL.md`](../skills/ponytail/SKILL.md)
+2. **Before claiming done / commit / PR** → [`.cursor/skills/deslop/SKILL.md`](../skills/deslop/SKILL.md) (diff vs `main`)
+3. **Same finish gate** → [`.cursor/skills/thermo-nuclear-code-quality-review/SKILL.md`](../skills/thermo-nuclear-code-quality-review/SKILL.md) on the branch diff; fix blockers
+
+If they conflict: **ponytail** wins on whether to add a thing; **thermo-nuclear** wins on restructuring something already being shipped; **deslop** wins on cosmetic AI noise.

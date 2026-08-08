@@ -16,6 +16,8 @@ import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
+import pl.diplomat.infrastructure.ota.OtaUpdateManager
+import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
 import pl.diplomat.infrastructure.persistence.DiplomatDatabase
 import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
 import pl.diplomat.infrastructure.persistence.MIGRATION_2_3
@@ -64,6 +66,9 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     }
 
     lateinit var dashboardViewModel: DashboardViewModel
+        private set
+
+    lateinit var otaUpdateViewModel: OtaUpdateViewModel
         private set
 
     lateinit var whitelistViewModel: WhitelistViewModel
@@ -120,6 +125,8 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
             buildInfo = buildInfo,
         )
+
+        otaUpdateViewModel = OtaUpdateViewModel(OtaUpdateManager(this))
 
         conversationDetailViewModelFactory = { contact ->
             ConversationDetailViewModel(

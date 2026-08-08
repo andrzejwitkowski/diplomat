@@ -33,8 +33,37 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk`
 | `build_apk.yml` | push to `main` | Debug APK artifact |
 | `release.yml` | push to `main` | Semver git tag (`v{versionName}`) + GitHub Release with APK |
 
-Bump `versionName` in `app/build.gradle.kts` before merging to `main` to publish a new release. The release workflow skips if the tag already exists.
+Bump **both** `versionCode` and `versionName` in `app/build.gradle.kts` before merging to `main` to publish a new release. The release workflow skips if the tag already exists. In-app OTA requires a higher `versionCode` than the installed build.
+
+### Shared signing (required for OTA)
+
+CI must sign every shippable APK with the **same** keystore so updates install over the existing app (data and privileges kept).
+
+1. Generate once (do not commit the `.jks`):
+
+```bash
+keytool -genkeypair -v -keystore diplomat-ci.jks -alias diplomat \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 diplomat-ci.jks > diplomat-ci.jks.b64
+```
+
+2. Add GitHub Actions secrets:
+
+| Secret | Value |
+|--------|--------|
+| `DIPLOMAT_KEYSTORE_BASE64` | contents of `diplomat-ci.jks.b64` |
+| `DIPLOMAT_KEYSTORE_PASSWORD` | keystore password |
+| `DIPLOMAT_KEY_ALIAS` | key alias (e.g. `diplomat`) |
+| `DIPLOMAT_KEY_PASSWORD` | key password |
+
+3. After the first CI build signed with this keystore: **uninstall once** and install that APK. Later OTA updates keep data.
+
+Local `./gradlew assembleDebug` still uses the machine debug keystore unless those `DIPLOMAT_*` env vars are set.
+
+## In-app OTA
+
+On the dashboard footer, paste a URL to a ZIP (Actions artifact) or APK (GitHub Release asset) and tap **Update**. The app downloads, extracts if needed, and opens the system installer.
 
 ## Engineering principles
 
-This project follows Clean Code, idiomatic Kotlin, and hexagonal architecture. Development guidance is captured in `AGENTS.md` (ponytail-inspired minimalism).
+This project follows Clean Code, idiomatic Kotlin, and hexagonal architecture. Agent skills: `AGENTS.md` and `.cursor/skills/` (ponytail / deslop / thermo-nuclear).
