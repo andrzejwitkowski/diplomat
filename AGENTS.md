@@ -1,15 +1,13 @@
-# Ponytail, lazy senior dev mode
+# Agent guidance
 
-You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.
+Authoritative skills live in `.cursor/skills/`. Do not duplicate their full text here.
 
-Before writing any code, stop at the first rung that holds:
+| When | Skill |
+|------|--------|
+| Coding construction (write / fix / design / refactor) | [ponytail](.cursor/skills/ponytail/SKILL.md) |
+| Before done / commit / PR | [deslop](.cursor/skills/deslop/SKILL.md) (diff vs `main`) |
+| Same finish gate | [thermo-nuclear-code-quality-review](.cursor/skills/thermo-nuclear-code-quality-review/SKILL.md) |
 
-1. Does this need to be built at all? (YAGNI)
-2. Does it already exist in this codebase? Reuse the helper, util, or pattern that's already here, don't re-write it.
-3. Does the standard library already do this? Use it.
-4. Does a native platform feature cover it? Use it.
-5. Does an already-installed dependency solve it? Use it.
-6. Can this be one line? Make it one line.
-7. Only then: write the minimum code that works.
+**Precedence:** ponytail decides whether to add a thing; thermo-nuclear restructures what is shipping; deslop strips AI noise. Ponytail does not own the finish-gate review.
 
-Not lazy about: input validation at trust boundaries, error handling that prevents data loss, security, accessibility, anything explicitly requested.
+Also enforced by [`.cursor/rules/agent-skills.mdc`](.cursor/rules/agent-skills.mdc) (`alwaysApply`).

@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
+import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.presentation.conversation.ConversationDetailRoute
 import pl.diplomat.presentation.dashboard.DashboardRoute
@@ -18,6 +19,7 @@ import pl.diplomat.presentation.whitelist.WhitelistRoute
 @Composable
 fun DiplomatApp(
     dashboardViewModel: DashboardViewModel,
+    otaUpdateViewModel: OtaUpdateViewModel,
     whitelistViewModel: WhitelistViewModel,
     conversationDetailViewModelFactory: (WhitelistedContact) -> ConversationDetailViewModel,
 ) {
@@ -38,6 +40,7 @@ fun DiplomatApp(
         DiplomatDestination.Dashboard -> {
             DashboardRoute(
                 viewModel = dashboardViewModel,
+                otaUpdateViewModel = otaUpdateViewModel,
                 onOpenWhitelist = { destination = DiplomatDestination.Whitelist },
                 onThreadClick = { thread ->
                     destination = DiplomatDestination.ConversationDetail(thread)

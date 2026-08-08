@@ -47,4 +47,13 @@
     <string name="build_info_apk_built_at">APK built %1$s</string>
     <string name="copy_debug_logs">Copy debug logs</string>
     <string name="debug_logs_copied">Debug logs copied to clipboard</string>
+    <string name="ota_url_label">OTA update URL (ZIP or APK)</string>
+    <string name="ota_update">Update</string>
+    <string name="ota_hint">Paste a GitHub Actions ZIP or Release APK link. Install may ask for unknown-apps permission once.</string>
+    <string name="ota_downloading">Downloading…</string>
+    <string name="ota_downloading_percent">Downloading… %1$d%%</string>
+    <string name="ota_need_permission">Allow installing apps from Diplomat, then tap Continue.</string>
+    <string name="ota_continue_install">Continue</string>
+    <string name="ota_open_install_settings">Allow installs</string>
+    <string name="ota_installing">Opening installer…</string>
 </resources>
