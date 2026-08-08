@@ -45,6 +45,23 @@ class SmsRowMapperTest {
     }
 
     @Test
+    fun pendingOutboundTypesAreHeld() {
+        assertTrue(SmsRowMapper.isPendingOutbound(Telephony.Sms.MESSAGE_TYPE_OUTBOX))
+        assertTrue(SmsRowMapper.isPendingOutbound(Telephony.Sms.MESSAGE_TYPE_QUEUED))
+        assertFalse(SmsRowMapper.isPendingOutbound(Telephony.Sms.MESSAGE_TYPE_SENT))
+        assertFalse(SmsRowMapper.isPendingOutbound(Telephony.Sms.MESSAGE_TYPE_INBOX))
+        assertNull(
+            SmsRowMapper.toRaw(
+                id = 1L,
+                address = "+48111111111",
+                body = "x",
+                date = 1L,
+                type = Telephony.Sms.MESSAGE_TYPE_OUTBOX,
+            ),
+        )
+    }
+
+    @Test
     fun toRawSkipsDraftsAndBlank() {
         assertNull(
             SmsRowMapper.toRaw(

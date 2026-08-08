@@ -9,6 +9,10 @@ object SmsRowMapper {
     fun isOutgoing(type: Int): Boolean =
         type == Telephony.Sms.MESSAGE_TYPE_SENT
 
+    /** Outbox/queued rows keep the same `_id` when they become sent — do not checkpoint past them. */
+    fun isPendingOutbound(type: Int): Boolean =
+        type == Telephony.Sms.MESSAGE_TYPE_OUTBOX || type == Telephony.Sms.MESSAGE_TYPE_QUEUED
+
     fun toRaw(
         id: Long,
         address: String,

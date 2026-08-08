@@ -59,10 +59,17 @@ class SmsInboxObserver(
             val afterId = lastSeenId()
             val rows = queryAfter(afterId)
             var maxId = afterId
+            var sawPendingOutbound = false
             for (row in rows) {
-                if (row.id > maxId) maxId = row.id
+                if (SmsRowMapper.isPendingOutbound(row.type)) {
+                    sawPendingOutbound = true
+                    continue
+                }
                 val raw = SmsRowMapper.toRaw(row.id, row.address, row.body, row.date, row.type)
-                    ?: continue
+                if (raw == null) {
+                    if (!sawPendingOutbound && row.id > maxId) maxId = row.id
+                    continue
+                }
                 when (val result = process(raw)) {
                     is ProcessIncomingMessageResult.Saved ->
                         DevLog.log("SMS", "saved outgoing=${raw.isOutgoing} id=${row.id}")
@@ -71,6 +78,7 @@ class SmsInboxObserver(
                     ProcessIncomingMessageResult.IgnoredDuplicate ->
                         DevLog.log("SMS", "duplicate id=${row.id}")
                 }
+                if (!sawPendingOutbound && row.id > maxId) maxId = row.id
             }
             if (maxId > afterId) {
                 prefs.edit().putLong(KEY_LAST_ID, maxId).apply()
