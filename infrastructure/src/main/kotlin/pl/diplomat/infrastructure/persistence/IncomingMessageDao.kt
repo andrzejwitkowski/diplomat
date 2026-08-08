@@ -15,29 +15,7 @@ abstract class IncomingMessageDao {
     @Query(
         """
         SELECT COUNT(*) > 0 FROM incoming_messages
-        WHERE notificationKey = :notificationKey
-          AND text = :text
-          AND contentType = :contentType
-          AND mediaKind = :mediaKind
-          AND isOutgoing = :isOutgoing
-          AND timestamp BETWEEN :sinceTimestamp AND :untilTimestamp
-        """,
-    )
-    protected abstract suspend fun hasRecentDuplicateByNotificationKey(
-        notificationKey: String,
-        text: String,
-        contentType: String,
-        mediaKind: String,
-        isOutgoing: Boolean,
-        sinceTimestamp: Long,
-        untilTimestamp: Long,
-    ): Boolean
-
-    @Query(
-        """
-        SELECT COUNT(*) > 0 FROM incoming_messages
         WHERE contactId = :contactId
-          AND notificationKey IS NULL
           AND text = :text
           AND contentType = :contentType
           AND mediaKind = :mediaKind
@@ -62,8 +40,9 @@ abstract class IncomingMessageDao {
     ): Long {
         val sinceTimestamp = entity.timestamp - windowMs
         val untilTimestamp = entity.timestamp + windowMs
-        val isDuplicate = when (val notificationKey = entity.notificationKey) {
-            null -> hasRecentDuplicateByContact(
+        // Contact+text+time covers notification reposts and Telephony sms:_id overlap.
+        if (
+            hasRecentDuplicateByContact(
                 contactId = entity.contactId,
                 text = entity.text,
                 contentType = entity.contentType,
@@ -72,17 +51,9 @@ abstract class IncomingMessageDao {
                 sinceTimestamp = sinceTimestamp,
                 untilTimestamp = untilTimestamp,
             )
-            else -> hasRecentDuplicateByNotificationKey(
-                notificationKey = notificationKey,
-                text = entity.text,
-                contentType = entity.contentType,
-                mediaKind = entity.mediaKind,
-                isOutgoing = entity.isOutgoing,
-                sinceTimestamp = sinceTimestamp,
-                untilTimestamp = untilTimestamp,
-            )
+        ) {
+            return DUPLICATE_ID
         }
-        if (isDuplicate) return DUPLICATE_ID
         return insert(entity)
     }
 
