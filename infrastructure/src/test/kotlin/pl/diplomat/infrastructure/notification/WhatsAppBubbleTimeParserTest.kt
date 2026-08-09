@@ -71,10 +71,33 @@ class WhatsAppBubbleTimeParserTest {
     }
 
     @Test
+    fun assignsEachMarkerAtMostOnceWithOverlappingWindows() {
+        val candidates = listOf(
+            WhatsAppNodeMessageExtractor.MessageCandidate("first", false, top = 400),
+            WhatsAppNodeMessageExtractor.MessageCandidate("second", true, top = 500),
+        )
+        val nodes = listOf(
+            node("20:55", top = 430, viewId = "com.whatsapp:id/date"),
+            node("20:56", top = 530, viewId = "com.whatsapp:id/date"),
+        )
+        val attached = WhatsAppBubbleTimeParser.attachBubbleTimestamps(
+            candidates = candidates,
+            nodes = nodes,
+            referenceMillis = referenceMillis,
+            zoneId = zone,
+        )
+        val firstTs = LocalDate.of(2026, 8, 9).atTime(20, 55).atZone(zone).toInstant().toEpochMilli()
+        val secondTs = LocalDate.of(2026, 8, 9).atTime(20, 56).atZone(zone).toInstant().toEpochMilli()
+        assertEquals(firstTs, attached[0].timestampMillis)
+        assertEquals(secondTs, attached[1].timestampMillis)
+        assertTrue(attached[0].timestampMillis!! < attached[1].timestampMillis!!)
+    }
+
+    @Test
     fun fallsBackToOrderedTimestampsWhenMarkersMissing() {
         val candidates = listOf(
-            WhatsAppNodeMessageExtractor.MessageCandidate("a", false, top = 100),
             WhatsAppNodeMessageExtractor.MessageCandidate("b", true, top = 200),
+            WhatsAppNodeMessageExtractor.MessageCandidate("a", false, top = 100),
         )
         val attached = WhatsAppBubbleTimeParser.attachBubbleTimestamps(
             candidates = candidates,
@@ -82,7 +105,10 @@ class WhatsAppBubbleTimeParserTest {
             referenceMillis = referenceMillis,
             zoneId = zone,
         )
-        assertTrue(attached[0].timestampMillis!! < attached[1].timestampMillis!!)
+        val earlier = attached.single { it.top == 100 }
+        val later = attached.single { it.top == 200 }
+        assertEquals(referenceMillis - WhatsAppBubbleTimeParser.FALLBACK_STEP_MS, earlier.timestampMillis)
+        assertEquals(referenceMillis, later.timestampMillis)
     }
 
     private fun node(

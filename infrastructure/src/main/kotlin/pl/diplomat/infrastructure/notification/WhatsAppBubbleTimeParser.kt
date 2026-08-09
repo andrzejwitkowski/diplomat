@@ -68,10 +68,17 @@ object WhatsAppBubbleTimeParser {
         val fallbackByIndex = sortedIndices.withIndex().associate { (order, originalIndex) ->
             originalIndex to (referenceMillis - (sortedIndices.size - 1 - order) * FALLBACK_STEP_MS)
         }
+        val usedMarkerIndices = mutableSetOf<Int>()
         return candidates.mapIndexed { index, candidate ->
-            val parsed = markers
-                .filter { (top, _) -> top >= candidate.top - 8 && top <= candidate.top + 140 }
-                .maxByOrNull { it.first }
+            val parsed = markers.withIndex()
+                .filter { (markerIndex, marker) ->
+                    markerIndex !in usedMarkerIndices &&
+                        marker.first >= candidate.top - 8 &&
+                        marker.first <= candidate.top + 140
+                }
+                .minByOrNull { (_, marker) -> kotlin.math.abs(marker.first - candidate.top) }
+                ?.also { (markerIndex, _) -> usedMarkerIndices.add(markerIndex) }
+                ?.value
                 ?.second
             candidate.copy(timestampMillis = parsed ?: fallbackByIndex.getValue(index))
         }
