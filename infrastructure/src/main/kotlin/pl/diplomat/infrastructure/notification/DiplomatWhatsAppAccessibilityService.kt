@@ -9,6 +9,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.launch
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
+import pl.diplomat.domain.model.VisualMediaKind
 import pl.diplomat.infrastructure.DiplomatServiceLocator
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.service.DiplomatForegroundService
@@ -70,10 +71,12 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
         val title = WhatsAppNodeMessageExtractor.extractConversationTitle(snapshots)
         if (title.isNullOrBlank()) return
 
+        val scanMillis = System.currentTimeMillis()
         val candidates = WhatsAppNodeMessageExtractor.extractMessages(
             nodes = snapshots,
             screenWidth = resources.displayMetrics.widthPixels,
             conversationTitle = title,
+            referenceMillis = scanMillis,
         )
         val fresh = session.onScan(title, candidates)
         if (fresh.isEmpty()) return
@@ -83,18 +86,19 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
             return
         }
 
-        val now = System.currentTimeMillis()
         locator.applicationScope.launch {
             for (candidate in fresh) {
+                val content = resolveAccessibilityContent(locator, candidate) ?: continue
+                val timestamp = candidate.timestampMillis ?: scanMillis
                 DevLog.log(
                     "A11Y",
-                    "emit outgoing=${candidate.isOutgoing} textLen=${candidate.text.length}",
+                    "emit outgoing=${candidate.isOutgoing} ts=$timestamp textLen=${candidate.text.length}",
                 )
                 locator.dispatchCapturedMessage(
                     RawIncomingMessage(
                         senderPhone = title,
-                        content = MessageContent.TextOnly(candidate.text),
-                        timestamp = now,
+                        content = content,
+                        timestamp = timestamp,
                         sourceApp = MessageSourceApp.WHATSAPP,
                         notificationKey = "a11y:${candidate.fingerprint(title)}",
                         isOutgoing = candidate.isOutgoing,
@@ -114,7 +118,7 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
         val content = text.ifBlank { desc }
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
-        if (content.isNotBlank() || node.isEditable) {
+        if (content.isNotBlank() || node.isEditable || isPotentialMediaSnapshot(node, bounds)) {
             out.add(
                 WhatsAppNodeMessageExtractor.NodeTextSnapshot(
                     text = content,
@@ -135,6 +139,28 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
                 child.recycle()
             }
         }
+    }
+
+    private fun isPotentialMediaSnapshot(node: AccessibilityNodeInfo, bounds: Rect): Boolean =
+        WhatsAppNodeMessageExtractor.isPotentialMediaNode(
+            WhatsAppNodeMessageExtractor.NodeTextSnapshot(
+                text = "",
+                className = node.className?.toString(),
+                viewId = node.viewIdResourceName,
+                centerX = bounds.centerX(),
+                top = bounds.top,
+                bottom = bounds.bottom,
+            ),
+        )
+
+    private fun resolveAccessibilityContent(
+        locator: DiplomatServiceLocator,
+        candidate: WhatsAppNodeMessageExtractor.MessageCandidate,
+    ): MessageContent? {
+        if (candidate.isMediaOnly) {
+            return MessageContent.VisualOnly(VisualMediaKind.PHOTO)
+        }
+        return locator.notificationParser.resolveTextContent(candidate.text)
     }
 
     companion object {

@@ -34,5 +34,5 @@ class AccessibilityCaptureSession {
     }
 
     private fun contentKey(candidate: WhatsAppNodeMessageExtractor.MessageCandidate): String =
-        "${candidate.text}\u0000${candidate.isOutgoing}"
+        "${candidate.text}\u0000${candidate.isOutgoing}\u0000${candidate.isMediaOnly}"
 }
