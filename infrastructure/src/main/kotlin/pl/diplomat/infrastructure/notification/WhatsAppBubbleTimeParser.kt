@@ -20,7 +20,7 @@ object WhatsAppBubbleTimeParser {
         if (trimmed.isBlank()) return null
         val time = parseLocalTime(trimmed) ?: return null
         val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zoneId).toLocalDate()
-        return localDateTimeToMillis(referenceDate, time, zoneId)
+        return localDateTimeToMillis(referenceDate, time, referenceMillis, zoneId)
     }
 
     private fun parseLocalTime(text: String): LocalTime? {
@@ -33,19 +33,21 @@ object WhatsAppBubbleTimeParser {
         return null
     }
 
-    private fun localDateTimeToMillis(date: LocalDate, time: LocalTime, zoneId: ZoneId): Long {
+    private fun localDateTimeToMillis(
+        date: LocalDate,
+        time: LocalTime,
+        referenceMillis: Long,
+        zoneId: ZoneId,
+    ): Long {
         var candidate = LocalDateTime.of(date, time).atZone(zoneId).toInstant().toEpochMilli()
-        val referenceStart = date.atStartOfDay(zoneId).toInstant().toEpochMilli()
-        if (candidate > referenceMillis(date, zoneId) + DAY_MS) {
-            candidate -= DAY_MS
-        } else if (candidate < referenceStart - DAY_MS) {
-            candidate += DAY_MS
+        if (candidate > referenceMillis) {
+            candidate = LocalDateTime.of(date.minusDays(1), time)
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli()
         }
         return candidate
     }
-
-    private fun referenceMillis(date: LocalDate, zoneId: ZoneId): Long =
-        date.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
 
     fun attachBubbleTimestamps(
         candidates: List<WhatsAppNodeMessageExtractor.MessageCandidate>,
@@ -76,5 +78,4 @@ object WhatsAppBubbleTimeParser {
     }
 
     const val FALLBACK_STEP_MS = 1_000L
-    private const val DAY_MS = 86_400_000L
 }

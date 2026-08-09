@@ -118,7 +118,7 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
         val content = text.ifBlank { desc }
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
-        if (content.isNotBlank() || node.isEditable) {
+        if (content.isNotBlank() || node.isEditable || isPotentialMediaSnapshot(node, bounds)) {
             out.add(
                 WhatsAppNodeMessageExtractor.NodeTextSnapshot(
                     text = content,
@@ -140,6 +140,18 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
             }
         }
     }
+
+    private fun isPotentialMediaSnapshot(node: AccessibilityNodeInfo, bounds: Rect): Boolean =
+        WhatsAppNodeMessageExtractor.isPotentialMediaNode(
+            WhatsAppNodeMessageExtractor.NodeTextSnapshot(
+                text = "",
+                className = node.className?.toString(),
+                viewId = node.viewIdResourceName,
+                centerX = bounds.centerX(),
+                top = bounds.top,
+                bottom = bounds.bottom,
+            ),
+        )
 
     private fun resolveAccessibilityContent(
         locator: DiplomatServiceLocator,

@@ -33,8 +33,6 @@ class AccessibilityCaptureSession {
         return fresh
     }
 
-    private fun contentKey(candidate: WhatsAppNodeMessageExtractor.MessageCandidate): String {
-        val position = if (candidate.isMediaOnly) candidate.top.toString() else ""
-        return "${candidate.text}\u0000${candidate.isOutgoing}\u0000${candidate.isMediaOnly}\u0000$position"
-    }
+    private fun contentKey(candidate: WhatsAppNodeMessageExtractor.MessageCandidate): String =
+        "${candidate.text}\u0000${candidate.isOutgoing}\u0000${candidate.isMediaOnly}"
 }

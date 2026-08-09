@@ -28,6 +28,23 @@ class WhatsAppBubbleTimeParserTest {
     }
 
     @Test
+    fun rollsBackToPreviousDayWhenBubbleTimeIsAheadOfScan() {
+        val zone = ZoneId.of("Europe/Warsaw")
+        val referenceMillis = LocalDate.of(2026, 8, 10)
+            .atTime(LocalTime.of(0, 10))
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        val parsed = WhatsAppBubbleTimeParser.parseClockTime("23:50", referenceMillis, zone)
+        val expected = LocalDate.of(2026, 8, 9)
+            .atTime(LocalTime.of(23, 50))
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        assertEquals(expected, parsed)
+    }
+
+    @Test
     fun attachesParsedTimestampToNearestBubble() {
         val candidates = listOf(
             WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, top = 400),

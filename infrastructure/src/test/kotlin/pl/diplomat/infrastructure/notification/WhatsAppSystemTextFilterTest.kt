@@ -16,6 +16,15 @@ class WhatsAppSystemTextFilterTest {
     }
 
     @Test
+    fun rejectsEnglishSystemMetadata() {
+        assertTrue(WhatsAppSystemTextFilter.isJunk("online"))
+        assertTrue(WhatsAppSystemTextFilter.isJunk("last seen today at 8:59 PM"))
+        assertTrue(WhatsAppSystemTextFilter.isJunk("2 unread messages"))
+        assertTrue(WhatsAppSystemTextFilter.isJunk("Voice call"))
+        assertTrue(WhatsAppSystemTextFilter.isJunk("28 sec."))
+    }
+
+    @Test
     fun rejectsStandaloneClockTimes() {
         assertTrue(WhatsAppSystemTextFilter.isJunk("20:59"))
         assertTrue(WhatsAppSystemTextFilter.isJunk("9:05"))

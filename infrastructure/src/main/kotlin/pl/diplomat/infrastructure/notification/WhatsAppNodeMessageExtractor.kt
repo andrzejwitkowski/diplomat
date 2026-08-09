@@ -92,7 +92,7 @@ object WhatsAppNodeMessageExtractor {
             .sortedBy { it.top }
             .map { node ->
                 val isOutgoing = node.centerX > midX
-                val key = "\u0000media\u0000$isOutgoing\u0000${node.top}"
+                val key = "\u0000media\u0000$isOutgoing"
                 val occurrence = occurrenceByKey[key] ?: 0
                 occurrenceByKey[key] = occurrence + 1
                 MessageCandidate(
@@ -119,6 +119,8 @@ object WhatsAppNodeMessageExtractor {
             id.endsWith("id/conversation_text") ||
             id.contains("message_text", ignoreCase = true)
     }
+
+    fun isPotentialMediaNode(node: NodeTextSnapshot): Boolean = isMediaThumbNode(node)
 
     private fun isMediaThumbNode(node: NodeTextSnapshot): Boolean {
         val id = node.viewId.orEmpty()

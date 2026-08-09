@@ -36,6 +36,7 @@ class NotificationParser(
             postedAtMillis = postedAtMillis,
             notificationKey = notificationKey,
             conversationCandidates = conversationCandidates,
+            sourceApp = sourceApp,
         )
         if (threadMessages.isNotEmpty()) {
             return threadMessages.mapIndexedNotNull { index, message ->
@@ -54,7 +55,7 @@ class NotificationParser(
         }
 
         val text = extractNotificationText(extras)
-        if (WhatsAppSystemTextFilter.isJunk(text)) return emptyList()
+        if (sourceApp == MessageSourceApp.WHATSAPP && WhatsAppSystemTextFilter.isJunk(text)) return emptyList()
         val content = resolveContent(text, extras) ?: return emptyList()
         return listOf(
             ParsedNotification(
@@ -272,6 +273,7 @@ class NotificationParser(
         postedAtMillis: Long,
         notificationKey: String,
         conversationCandidates: List<String>,
+        sourceApp: MessageSourceApp? = null,
     ): List<MessagingStyleMessage> {
         val messages = extras.getParcelableArray("android.messages") ?: return emptyList()
         if (messages.isEmpty()) return emptyList()
@@ -282,7 +284,7 @@ class NotificationParser(
             val bundle = parcelable as? Bundle ?: continue
             val text = bundle.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
                 ?: continue
-            if (WhatsAppSystemTextFilter.isJunk(text)) continue
+            if (sourceApp == MessageSourceApp.WHATSAPP && WhatsAppSystemTextFilter.isJunk(text)) continue
             val senderCandidates = buildList {
                 bundle.getCharSequence("sender")?.toString()?.trim()?.takeIf { it.isNotBlank() }
                     ?.let { add(it) }
