@@ -32,8 +32,9 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk`
 |----------|---------|--------|
 | `build_apk.yml` | push to `main` | Debug APK artifact |
 | `release.yml` | push to `main` | Semver git tag (`v{versionName}`) + GitHub Release with APK |
+| `release.yml` | manual (**Actions → Release → Run workflow**) | Same, with user-supplied semver (and optional `versionCode`) |
 
-Bump **both** `versionCode` and `versionName` in `app/build.gradle.kts` before merging to `main` to publish a new release. The release workflow skips if the tag already exists. In-app OTA requires a higher `versionCode` than the installed build.
+Bump **both** `versionCode` and `versionName` in `app/build.gradle.kts` before merging to `main` to publish a new release on push. Or run **Release** manually and enter a semver (e.g. `1.3.0`); `versionCode` defaults to current + 1 for OTA. The release workflow skips if the tag already exists. In-app OTA requires a higher `versionCode` than the installed build.
 
 ### Shared signing (required for OTA)
 
