@@ -29,8 +29,25 @@ class WhatsAppNodeMessageExtractorTest {
         )
         assertEquals(
             listOf(
-                WhatsAppNodeMessageExtractor.MessageCandidate("from them", isOutgoing = false),
-                WhatsAppNodeMessageExtractor.MessageCandidate("from me", isOutgoing = true),
+                WhatsAppNodeMessageExtractor.MessageCandidate("from them", isOutgoing = false, occurrence = 0),
+                WhatsAppNodeMessageExtractor.MessageCandidate("from me", isOutgoing = true, occurrence = 0),
+            ),
+            messages,
+        )
+    }
+
+    @Test
+    fun preservesDuplicateIdenticalBubblesWithOccurrence() {
+        val nodes = listOf(
+            node("Alice", viewId = "com.whatsapp:id/conversation_contact_name", top = 40, centerX = 200),
+            node("ok", viewId = "com.whatsapp:id/message_text", top = 400, centerX = 120),
+            node("ok", viewId = "com.whatsapp:id/message_text", top = 500, centerX = 120),
+        )
+        val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
+        assertEquals(
+            listOf(
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 0),
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 1),
             ),
             messages,
         )
@@ -53,22 +70,22 @@ class WhatsAppNodeMessageExtractorTest {
             node("hi", viewId = "com.whatsapp:id/message_text", top = 400, centerX = 100),
         )
         val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
-        assertEquals(listOf(WhatsAppNodeMessageExtractor.MessageCandidate("hi", false)), messages)
+        assertEquals(listOf(WhatsAppNodeMessageExtractor.MessageCandidate("hi", false, 0)), messages)
     }
 
     @Test
-    fun composeSendFallbackAddsOutgoingWhenMissingBubble() {
-        val withBubble = listOf(
-            WhatsAppNodeMessageExtractor.MessageCandidate("sent", isOutgoing = true),
+    fun clearingUnsentDraftDoesNotCreateMessageCandidates() {
+        val nodesWithDraft = listOf(
+            node("Alice", viewId = "com.whatsapp:id/conversation_contact_name", top = 40, centerX = 200),
+            node("draft", viewId = "com.whatsapp:id/entry", isEditable = true, top = 1800, centerX = 500),
         )
-        assertEquals(
-            withBubble,
-            WhatsAppNodeMessageExtractor.withComposeSendFallback(withBubble, "sent"),
+        val nodesCleared = listOf(
+            node("Alice", viewId = "com.whatsapp:id/conversation_contact_name", top = 40, centerX = 200),
+            node("", viewId = "com.whatsapp:id/entry", isEditable = true, top = 1800, centerX = 500),
         )
-        assertEquals(
-            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("sent", isOutgoing = true)),
-            WhatsAppNodeMessageExtractor.withComposeSendFallback(emptyList(), "sent"),
-        )
+        assertEquals("draft", WhatsAppNodeMessageExtractor.extractComposeText(nodesWithDraft))
+        assertEquals(null, WhatsAppNodeMessageExtractor.extractComposeText(nodesCleared))
+        assertTrue(WhatsAppNodeMessageExtractor.extractMessages(nodesCleared, 1080, "Alice").isEmpty())
     }
 
     private fun node(
@@ -144,5 +161,42 @@ class AccessibilityCaptureSessionTest {
             listOf(WhatsAppNodeMessageExtractor.MessageCandidate("later", true)),
             next,
         )
+    }
+
+    @Test
+    fun emitsSecondIdenticalMessageAsFreshOccurrence() {
+        val session = AccessibilityCaptureSession()
+        session.onScan(
+            "Alice",
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("ok", false)),
+        )
+        val fresh = session.onScan(
+            "Alice",
+            listOf(
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false),
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false),
+            ),
+        )
+        assertEquals(
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, occurrence = 1)),
+            fresh,
+        )
+    }
+
+    @Test
+    fun scrollingAwayDoesNotReemitBaselineMessages() {
+        val session = AccessibilityCaptureSession()
+        session.onScan(
+            "Alice",
+            listOf(
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false),
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false),
+            ),
+        )
+        val afterScroll = session.onScan(
+            "Alice",
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("ok", false)),
+        )
+        assertTrue(afterScroll.isEmpty())
     }
 }

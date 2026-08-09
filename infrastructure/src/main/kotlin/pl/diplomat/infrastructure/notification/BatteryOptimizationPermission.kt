@@ -8,7 +8,7 @@ import android.provider.Settings
 
 object BatteryOptimizationPermission {
     fun isIgnoring(context: Context): Boolean {
-        val powerManager = context.getSystemService(PowerManager::class.java) ?: return true
+        val powerManager = context.getSystemService(PowerManager::class.java) ?: return false
         return powerManager.isIgnoringBatteryOptimizations(context.packageName)
     }
 

@@ -19,8 +19,6 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private val session = AccessibilityCaptureSession()
     private var debounceRunnable: Runnable? = null
-    private var lastComposeText: String? = null
-    private var lastTitle: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -54,6 +52,10 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
     private fun scanActiveWindow() {
         val root = rootInActiveWindow ?: return
         try {
+            val packageName = root.packageName?.toString()
+            if (packageName == null || !NotificationParser.isWhatsAppPackage(packageName)) {
+                return
+            }
             val snapshots = ArrayList<WhatsAppNodeMessageExtractor.NodeTextSnapshot>(64)
             collectSnapshots(root, snapshots)
             processSnapshots(snapshots)
@@ -68,24 +70,11 @@ class DiplomatWhatsAppAccessibilityService : AccessibilityService() {
         val title = WhatsAppNodeMessageExtractor.extractConversationTitle(snapshots)
         if (title.isNullOrBlank()) return
 
-        if (title != lastTitle) {
-            lastTitle = title
-            lastComposeText = null
-        }
-
-        val compose = WhatsAppNodeMessageExtractor.extractComposeText(snapshots)
-        val clearedCompose = lastComposeText?.takeIf { compose == null }
-        lastComposeText = compose
-
-        val candidates = WhatsAppNodeMessageExtractor.withComposeSendFallback(
-            candidates = WhatsAppNodeMessageExtractor.extractMessages(
-                nodes = snapshots,
-                screenWidth = resources.displayMetrics.widthPixels,
-                conversationTitle = title,
-            ),
-            clearedCompose = clearedCompose,
+        val candidates = WhatsAppNodeMessageExtractor.extractMessages(
+            nodes = snapshots,
+            screenWidth = resources.displayMetrics.widthPixels,
+            conversationTitle = title,
         )
-
         val fresh = session.onScan(title, candidates)
         if (fresh.isEmpty()) return
 

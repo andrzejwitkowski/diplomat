@@ -15,9 +15,10 @@ object WhatsAppNodeMessageExtractor {
     data class MessageCandidate(
         val text: String,
         val isOutgoing: Boolean,
+        val occurrence: Int = 0,
     ) {
         fun fingerprint(contactKey: String): String =
-            "$contactKey\u0000$text\u0000$isOutgoing"
+            "$contactKey\u0000$text\u0000$isOutgoing\u0000$occurrence"
     }
 
     private val CHROME = setOf(
@@ -76,6 +77,7 @@ object WhatsAppNodeMessageExtractor {
         if (screenWidth <= 0) return emptyList()
         val midX = screenWidth / 2
         val title = conversationTitle?.trim().orEmpty()
+        val occurrenceByKey = mutableMapOf<String, Int>()
 
         return nodes
             .asSequence()
@@ -86,22 +88,18 @@ object WhatsAppNodeMessageExtractor {
             .filter { isLikelyMessageNode(it) }
             .sortedWith(compareBy({ it.top }, { it.centerX }))
             .map { node ->
+                val text = node.text.trim()
+                val isOutgoing = node.centerX > midX
+                val key = "$text\u0000$isOutgoing"
+                val occurrence = occurrenceByKey[key] ?: 0
+                occurrenceByKey[key] = occurrence + 1
                 MessageCandidate(
-                    text = node.text.trim(),
-                    isOutgoing = node.centerX > midX,
+                    text = text,
+                    isOutgoing = isOutgoing,
+                    occurrence = occurrence,
                 )
             }
-            .distinctBy { "${it.text}\u0000${it.isOutgoing}" }
             .toList()
-    }
-
-    fun withComposeSendFallback(
-        candidates: List<MessageCandidate>,
-        clearedCompose: String?,
-    ): List<MessageCandidate> {
-        if (clearedCompose.isNullOrBlank()) return candidates
-        if (candidates.any { it.isOutgoing && it.text == clearedCompose }) return candidates
-        return candidates + MessageCandidate(text = clearedCompose, isOutgoing = true)
     }
 
     private fun isLikelyMessageNode(node: NodeTextSnapshot): Boolean {
