@@ -7,4 +7,5 @@
     <string name="incoming_message_channel_name">Wiadomości przychodzące</string>
     <string name="incoming_message_channel_description">Powiadomienia o wiadomościach z kontaktów na whiteliście</string>
     <string name="message_preview_image">Zdjęcie</string>
+    <string name="accessibility_service_description">Odczytuje treść czatu WhatsApp, aby Diplomat mógł przechwytywać wiadomości przychodzące i wychodzące dla kontaktów z whitelisty.</string>
 </resources>

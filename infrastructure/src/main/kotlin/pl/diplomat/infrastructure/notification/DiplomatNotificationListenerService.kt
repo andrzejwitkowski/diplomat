@@ -7,7 +7,6 @@ import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.infrastructure.DiplomatServiceLocator
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.debug.NotificationExtrasSummary
-import pl.diplomat.usecase.ProcessIncomingMessageResult
 
 class DiplomatNotificationListenerService : NotificationListenerService() {
 
@@ -47,24 +46,10 @@ class DiplomatNotificationListenerService : NotificationListenerService() {
                         "extraCandidates=${parsed.additionalSenderCandidates.size} " +
                         contentMetadata(parsed.content),
                 )
-
-                val raw = locator.notificationParser.toRaw(parsed)
-                when (val result = locator.processIncomingMessage(raw)) {
-                    is ProcessIncomingMessageResult.Saved -> {
-                        DevLog.log("RESULT", "saved outgoing=${result.message.isOutgoing} status=${result.message.status}")
-                        if (!result.message.isOutgoing) {
-                            locator.incomingMessageNotifier.notify(result.contact, result.message)
-                        }
-                    }
-                    ProcessIncomingMessageResult.RejectedNotWhitelisted ->
-                        DevLog.log(
-                            "RESULT",
-                            "rejected outgoing=${raw.isOutgoing} primarySenderLen=${raw.senderPhone.length} " +
-                                "extraCandidates=${raw.additionalSenderCandidates.size}",
-                        )
-                    ProcessIncomingMessageResult.IgnoredDuplicate ->
-                        DevLog.log("RESULT", "duplicate outgoing=${raw.isOutgoing}")
-                }
+                locator.dispatchCapturedMessage(
+                    locator.notificationParser.toRaw(parsed),
+                    logTag = "RESULT",
+                )
             }
         }
     }
