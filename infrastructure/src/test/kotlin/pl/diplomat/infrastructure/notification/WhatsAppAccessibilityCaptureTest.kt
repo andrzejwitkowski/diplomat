@@ -29,10 +29,10 @@ class WhatsAppNodeMessageExtractorTest {
         )
         assertEquals(
             listOf(
-                WhatsAppNodeMessageExtractor.MessageCandidate("from them", isOutgoing = false, occurrence = 0),
-                WhatsAppNodeMessageExtractor.MessageCandidate("from me", isOutgoing = true, occurrence = 0),
+                WhatsAppNodeMessageExtractor.MessageCandidate("from them", isOutgoing = false, occurrence = 0, top = 400),
+                WhatsAppNodeMessageExtractor.MessageCandidate("from me", isOutgoing = true, occurrence = 0, top = 500),
             ),
-            messages,
+            messages.withoutTiming(),
         )
     }
 
@@ -46,10 +46,10 @@ class WhatsAppNodeMessageExtractorTest {
         val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
         assertEquals(
             listOf(
-                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 0),
-                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 1),
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 0, top = 400),
+                WhatsAppNodeMessageExtractor.MessageCandidate("ok", false, 1, top = 500),
             ),
-            messages,
+            messages.withoutTiming(),
         )
     }
 
@@ -70,7 +70,36 @@ class WhatsAppNodeMessageExtractorTest {
             node("hi", viewId = "com.whatsapp:id/message_text", top = 400, centerX = 100),
         )
         val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
-        assertEquals(listOf(WhatsAppNodeMessageExtractor.MessageCandidate("hi", false, 0)), messages)
+        assertEquals(listOf(WhatsAppNodeMessageExtractor.MessageCandidate("hi", false, 0, top = 400)), messages.withoutTiming())
+    }
+
+    @Test
+    fun rejectsSystemMetadataEvenOnMessageTextId() {
+        val nodes = listOf(
+            node("Alice", viewId = "com.whatsapp:id/conversation_contact_name", top = 40, centerX = 200),
+            node("20:59", viewId = "com.whatsapp:id/message_text", top = 400, centerX = 100),
+            node("Mandat", viewId = "com.whatsapp:id/message_text", top = 500, centerX = 100),
+        )
+        val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
+        assertEquals(
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("Mandat", false, 0, top = 500)),
+            messages.withoutTiming(),
+        )
+    }
+
+    @Test
+    fun ignoresGenericTextViewsWithoutMessageTextId() {
+        val nodes = listOf(
+            node("Alice", viewId = "com.whatsapp:id/conversation_contact_name", top = 40, centerX = 200),
+            node("widziano dzisiaj o 20:59", className = "android.widget.TextView", top = 80, centerX = 200),
+            node("20:59", className = "android.widget.TextView", top = 430, centerX = 700, bottom = 450),
+            node("real", viewId = "com.whatsapp:id/message_text", top = 400, centerX = 100),
+        )
+        val messages = WhatsAppNodeMessageExtractor.extractMessages(nodes, 1080, "Alice")
+        assertEquals(
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("real", false, 0, top = 400)),
+            messages.withoutTiming(),
+        )
     }
 
     @Test
@@ -87,6 +116,9 @@ class WhatsAppNodeMessageExtractorTest {
         assertEquals(null, WhatsAppNodeMessageExtractor.extractComposeText(nodesCleared))
         assertTrue(WhatsAppNodeMessageExtractor.extractMessages(nodesCleared, 1080, "Alice").isEmpty())
     }
+
+    private fun List<WhatsAppNodeMessageExtractor.MessageCandidate>.withoutTiming() =
+        map { it.copy(timestampMillis = null) }
 
     private fun node(
         text: String,

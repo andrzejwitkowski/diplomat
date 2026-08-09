@@ -16,31 +16,13 @@ object WhatsAppNodeMessageExtractor {
         val text: String,
         val isOutgoing: Boolean,
         val occurrence: Int = 0,
+        val top: Int = 0,
+        val timestampMillis: Long? = null,
+        val isMediaOnly: Boolean = false,
     ) {
         fun fingerprint(contactKey: String): String =
-            "$contactKey\u0000$text\u0000$isOutgoing\u0000$occurrence"
+            "$contactKey\u0000$text\u0000$isOutgoing\u0000$occurrence\u0000$isMediaOnly"
     }
-
-    private val CHROME = setOf(
-        "whatsapp",
-        "online",
-        "offline",
-        "typing…",
-        "typing...",
-        "pisze…",
-        "pisze...",
-        "last seen",
-        "ostatnio widziano",
-        "today",
-        "yesterday",
-        "dzisiaj",
-        "wczoraj",
-        "message",
-        "type a message",
-        "wpisz wiadomość",
-        "search",
-        "szukaj",
-    )
 
     fun extractConversationTitle(nodes: List<NodeTextSnapshot>): String? {
         nodes.firstOrNull { node ->
@@ -54,8 +36,7 @@ object WhatsAppNodeMessageExtractor {
             .asSequence()
             .filter { !it.isEditable && it.text.isNotBlank() }
             .filter { it.top in 0..280 }
-            .filterNot { isChrome(it.text) }
-            .filterNot { looksLikeMessageBody(it) }
+            .filterNot { WhatsAppSystemTextFilter.isJunk(it.text) }
             .minByOrNull { it.top }
             ?.text
             ?.trim()
@@ -73,19 +54,19 @@ object WhatsAppNodeMessageExtractor {
         nodes: List<NodeTextSnapshot>,
         screenWidth: Int,
         conversationTitle: String?,
+        referenceMillis: Long = System.currentTimeMillis(),
     ): List<MessageCandidate> {
         if (screenWidth <= 0) return emptyList()
         val midX = screenWidth / 2
         val title = conversationTitle?.trim().orEmpty()
         val occurrenceByKey = mutableMapOf<String, Int>()
-
-        return nodes
+        val textMessages = nodes
             .asSequence()
             .filter { !it.isEditable }
             .filter { it.text.isNotBlank() }
-            .filterNot { isChrome(it.text) }
+            .filterNot { WhatsAppSystemTextFilter.isJunk(it.text) }
             .filterNot { title.isNotBlank() && it.text.trim().equals(title, ignoreCase = true) }
-            .filter { isLikelyMessageNode(it) }
+            .filter { isMessageTextNode(it) }
             .sortedWith(compareBy({ it.top }, { it.centerX }))
             .map { node ->
                 val text = node.text.trim()
@@ -97,44 +78,60 @@ object WhatsAppNodeMessageExtractor {
                     text = text,
                     isOutgoing = isOutgoing,
                     occurrence = occurrence,
+                    top = node.top,
                 )
             }
             .toList()
+
+        val coveredTops = textMessages.map { it.top }.toSet()
+        val mediaOnly = nodes
+            .asSequence()
+            .filter { !it.isEditable }
+            .filter { isMediaThumbNode(it) }
+            .filter { thumb -> coveredTops.none { kotlin.math.abs(it - thumb.top) < 160 } }
+            .sortedBy { it.top }
+            .map { node ->
+                val isOutgoing = node.centerX > midX
+                val key = "\u0000media\u0000$isOutgoing\u0000${node.top}"
+                val occurrence = occurrenceByKey[key] ?: 0
+                occurrenceByKey[key] = occurrence + 1
+                MessageCandidate(
+                    text = "",
+                    isOutgoing = isOutgoing,
+                    occurrence = occurrence,
+                    top = node.top,
+                    isMediaOnly = true,
+                )
+            }
+            .toList()
+
+        val merged = (textMessages + mediaOnly).sortedBy { it.top }
+        return WhatsAppBubbleTimeParser.attachBubbleTimestamps(
+            candidates = merged,
+            nodes = nodes,
+            referenceMillis = referenceMillis,
+        )
     }
 
-    private fun isLikelyMessageNode(node: NodeTextSnapshot): Boolean {
+    private fun isMessageTextNode(node: NodeTextSnapshot): Boolean {
         val id = node.viewId.orEmpty()
-        if (id.endsWith("id/message_text") ||
+        return id.endsWith("id/message_text") ||
             id.endsWith("id/conversation_text") ||
             id.contains("message_text", ignoreCase = true)
+    }
+
+    private fun isMediaThumbNode(node: NodeTextSnapshot): Boolean {
+        val id = node.viewId.orEmpty()
+        if (id.endsWith("/thumb") ||
+            id.contains("media_thumb", ignoreCase = true) ||
+            id.endsWith("/image") ||
+            id.contains("/thumbnail", ignoreCase = true)
         ) {
             return true
         }
-        if (id.endsWith("id/conversation_contact_name") ||
-            id.endsWith("id/contact_name") ||
-            id.endsWith("id/entry")
-        ) {
-            return false
-        }
         val className = node.className.orEmpty()
-        if (className.isNotBlank() &&
-            !className.contains("TextView", ignoreCase = true) &&
-            !className.contains("AppCompatTextView", ignoreCase = true)
-        ) {
-            return false
-        }
-        return looksLikeMessageBody(node)
+        return className.contains("ImageView", ignoreCase = true) &&
+            node.top > 280 &&
+            node.centerX > 0
     }
-
-    private fun looksLikeMessageBody(node: NodeTextSnapshot): Boolean {
-        val text = node.text.trim()
-        if (text.isEmpty()) return false
-        if (text.length <= 2 && text.all { it.isDigit() || it == ':' }) return false
-        val height = (node.bottom - node.top).coerceAtLeast(0)
-        if (height in 1..28 && text.length <= 8) return false
-        return true
-    }
-
-    private fun isChrome(text: String): Boolean =
-        text.trim().lowercase() in CHROME
 }

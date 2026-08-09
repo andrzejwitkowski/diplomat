@@ -54,6 +54,7 @@ class NotificationParser(
         }
 
         val text = extractNotificationText(extras)
+        if (WhatsAppSystemTextFilter.isJunk(text)) return emptyList()
         val content = resolveContent(text, extras) ?: return emptyList()
         return listOf(
             ParsedNotification(
@@ -67,6 +68,8 @@ class NotificationParser(
             ),
         )
     }
+
+    fun resolveTextContent(text: String): MessageContent? = resolveContent(text, Bundle.EMPTY)
 
     internal fun resolveContent(text: String, extras: Bundle): MessageContent? {
         val trimmedText = text.trim()
@@ -153,6 +156,14 @@ class NotificationParser(
             "ty",
             "ja",
         )
+
+        private const val THREAD_MESSAGE_STEP_MS = 1_000L
+
+        internal fun inferredThreadTimestamp(postedAtMillis: Long, index: Int, lastIndex: Int): Long {
+            val offset = (lastIndex - index).coerceAtLeast(0)
+            val base = if (postedAtMillis > 0L) postedAtMillis else System.currentTimeMillis()
+            return base - offset * THREAD_MESSAGE_STEP_MS
+        }
 
         fun isSupportedPackage(packageName: String): Boolean =
             resolveSourceApp(packageName) != null
@@ -271,6 +282,7 @@ class NotificationParser(
             val bundle = parcelable as? Bundle ?: continue
             val text = bundle.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotBlank() }
                 ?: continue
+            if (WhatsAppSystemTextFilter.isJunk(text)) continue
             val senderCandidates = buildList {
                 bundle.getCharSequence("sender")?.toString()?.trim()?.takeIf { it.isNotBlank() }
                     ?.let { add(it) }
@@ -278,11 +290,11 @@ class NotificationParser(
             }.distinct()
             val explicitTime = bundle.getLong("time").takeIf { it > 0L }
             val timestamp = explicitTime
-                ?: if (index == messages.lastIndex && postedAtMillis > 0L) {
-                    postedAtMillis
-                } else {
-                    stableThreadTimestamp(notificationKey, text, index)
-                }
+                ?: Companion.inferredThreadTimestamp(
+                    postedAtMillis = postedAtMillis,
+                    index = index,
+                    lastIndex = messages.lastIndex,
+                )
             val isOutgoing = resolveIsOutgoing(
                 senderCandidates = senderCandidates,
                 conversationCandidates = conversationCandidates,
@@ -299,11 +311,6 @@ class NotificationParser(
             )
         }
         return parsed
-    }
-
-    private fun stableThreadTimestamp(notificationKey: String, text: String, index: Int): Long {
-        val hash = (notificationKey + "\u0000" + index + "\u0000" + text).hashCode().toLong()
-        return hash and 0x000FFFFFFFFFFFFFL
     }
 
     private fun resolveIsOutgoing(
