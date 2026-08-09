@@ -157,6 +157,9 @@ class NotificationParser(
         fun isSupportedPackage(packageName: String): Boolean =
             resolveSourceApp(packageName) != null
 
+        fun isWhatsAppPackage(packageName: String): Boolean =
+            packageName in WHATSAPP_PACKAGES
+
         private fun resolveSourceApp(packageName: String): MessageSourceApp? = when {
             packageName in SMS_PACKAGES -> MessageSourceApp.SMS
             packageName in WHATSAPP_PACKAGES -> MessageSourceApp.WHATSAPP

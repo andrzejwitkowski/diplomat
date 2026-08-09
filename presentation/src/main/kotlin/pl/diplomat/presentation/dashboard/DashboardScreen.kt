@@ -61,10 +61,13 @@ import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.presentation.conversation.MessageChannelStatusBadges
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.infrastructure.debug.DevLog
+import pl.diplomat.infrastructure.dashboard.DashboardPermissionState
 import pl.diplomat.infrastructure.dashboard.DashboardUiState
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
 import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
 import pl.diplomat.presentation.ota.OtaUpdateSection
+import pl.diplomat.infrastructure.notification.AccessibilityServicePermission
+import pl.diplomat.infrastructure.notification.BatteryOptimizationPermission
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
 import pl.diplomat.infrastructure.notification.PostNotificationsPermission
 import pl.diplomat.presentation.R
@@ -92,11 +95,13 @@ fun DashboardRoute(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshNotificationListenerPermission(
-                    NotificationListenerPermission.isGranted(context),
-                )
-                viewModel.refreshPostNotificationsPermission(
-                    PostNotificationsPermission.isGranted(context),
+                viewModel.refreshPermissions(
+                    DashboardPermissionState(
+                        notificationListener = NotificationListenerPermission.isGranted(context),
+                        postNotifications = PostNotificationsPermission.isGranted(context),
+                        accessibility = AccessibilityServicePermission.isGranted(context),
+                        batteryIgnored = BatteryOptimizationPermission.isIgnoring(context),
+                    ),
                 )
             }
         }
@@ -122,6 +127,8 @@ fun DashboardRoute(
                 conversations = state.conversations,
                 isNotificationListenerEnabled = state.isNotificationListenerEnabled,
                 isPostNotificationsEnabled = state.isPostNotificationsEnabled,
+                isAccessibilityServiceEnabled = state.isAccessibilityServiceEnabled,
+                isBatteryOptimizationIgnored = state.isBatteryOptimizationIgnored,
                 buildInfo = state.buildInfo,
                 otaUpdateViewModel = otaUpdateViewModel,
                 onOpenNotificationSettings = {
@@ -130,6 +137,16 @@ fun DashboardRoute(
                 onRequestPostNotifications = {
                     if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
                         requestPostNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                onOpenAccessibilitySettings = {
+                    context.startActivity(AccessibilityServicePermission.settingsIntent())
+                },
+                onRequestBatteryOptimization = {
+                    runCatching {
+                        context.startActivity(BatteryOptimizationPermission.requestIntent(context))
+                    }.onFailure {
+                        context.startActivity(BatteryOptimizationPermission.settingsIntent())
                     }
                 },
                 onOpenWhitelist = onOpenWhitelist,
@@ -151,10 +168,14 @@ fun DashboardScreen(
     conversations: List<ConversationThread>,
     isNotificationListenerEnabled: Boolean,
     isPostNotificationsEnabled: Boolean,
+    isAccessibilityServiceEnabled: Boolean,
+    isBatteryOptimizationIgnored: Boolean,
     buildInfo: AppBuildInfo,
     otaUpdateViewModel: OtaUpdateViewModel,
     onOpenNotificationSettings: () -> Unit,
     onRequestPostNotifications: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onRequestBatteryOptimization: () -> Unit,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
     onCopyDebugLogs: () -> Unit,
@@ -183,6 +204,22 @@ fun DashboardScreen(
                     message = stringResource(R.string.notification_listener_required),
                     actionLabel = stringResource(R.string.open_settings),
                     onAction = onOpenNotificationSettings,
+                )
+            }
+
+            if (!isAccessibilityServiceEnabled) {
+                NotificationPermissionBanner(
+                    message = stringResource(R.string.accessibility_service_required),
+                    actionLabel = stringResource(R.string.open_settings),
+                    onAction = onOpenAccessibilitySettings,
+                )
+            }
+
+            if (!isBatteryOptimizationIgnored) {
+                NotificationPermissionBanner(
+                    message = stringResource(R.string.battery_optimization_required),
+                    actionLabel = stringResource(R.string.grant_permission),
+                    onAction = onRequestBatteryOptimization,
                 )
             }
 

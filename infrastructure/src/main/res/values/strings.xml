@@ -7,4 +7,5 @@
     <string name="incoming_message_channel_name">Incoming messages</string>
     <string name="incoming_message_channel_description">Alerts for messages from whitelisted contacts</string>
     <string name="message_preview_image">Photo</string>
+    <string name="accessibility_service_description">Reads WhatsApp chat content so Diplomat can capture incoming and outgoing messages for whitelisted contacts.</string>
 </resources>

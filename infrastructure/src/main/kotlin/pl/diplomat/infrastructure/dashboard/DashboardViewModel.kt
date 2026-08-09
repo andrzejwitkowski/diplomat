@@ -19,6 +19,8 @@ sealed interface DashboardUiState {
         val conversations: List<ConversationThread>,
         val isNotificationListenerEnabled: Boolean,
         val isPostNotificationsEnabled: Boolean,
+        val isAccessibilityServiceEnabled: Boolean,
+        val isBatteryOptimizationIgnored: Boolean,
         val buildInfo: AppBuildInfo,
         val selectedThread: ConversationThread? = null,
     ) : DashboardUiState
@@ -26,27 +28,34 @@ sealed interface DashboardUiState {
     data class Error(val message: String) : DashboardUiState
 }
 
+data class DashboardPermissionState(
+    val notificationListener: Boolean = false,
+    val postNotifications: Boolean = true,
+    val accessibility: Boolean = false,
+    val batteryIgnored: Boolean = true,
+)
+
 class DashboardViewModel(
     getActiveConversations: GetActiveConversationsUseCase,
     buildInfo: AppBuildInfo,
 ) : ViewModel() {
 
-    private val notificationListenerEnabled = MutableStateFlow(false)
-    private val postNotificationsEnabled = MutableStateFlow(true)
+    private val permissions = MutableStateFlow(DashboardPermissionState())
     private val selectedThread = MutableStateFlow<ConversationThread?>(null)
     private val buildInfoState = MutableStateFlow(buildInfo)
 
     val uiState: StateFlow<DashboardUiState> = combine(
         getActiveConversations(),
-        notificationListenerEnabled,
-        postNotificationsEnabled,
+        permissions,
         selectedThread,
         buildInfoState,
-    ) { conversations, listenerEnabled, postNotificationsEnabled, thread, info ->
+    ) { conversations, perms, thread, info ->
         DashboardUiState.Content(
             conversations = conversations,
-            isNotificationListenerEnabled = listenerEnabled,
-            isPostNotificationsEnabled = postNotificationsEnabled,
+            isNotificationListenerEnabled = perms.notificationListener,
+            isPostNotificationsEnabled = perms.postNotifications,
+            isAccessibilityServiceEnabled = perms.accessibility,
+            isBatteryOptimizationIgnored = perms.batteryIgnored,
             buildInfo = info,
             selectedThread = thread,
         )
@@ -54,12 +63,12 @@ class DashboardViewModel(
         .catch<DashboardUiState> { emit(DashboardUiState.Error(it.message ?: "Unknown error")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState.Loading)
 
-    fun refreshNotificationListenerPermission(isEnabled: Boolean) {
-        notificationListenerEnabled.value = isEnabled
+    fun refreshPermissions(state: DashboardPermissionState) {
+        permissions.value = state
     }
 
     fun refreshPostNotificationsPermission(isEnabled: Boolean) {
-        postNotificationsEnabled.value = isEnabled
+        permissions.update { it.copy(postNotifications = isEnabled) }
     }
 
     fun onThreadClick(thread: ConversationThread) {
