@@ -62,7 +62,7 @@ class IncomingMessageNotifier(private val context: Context) {
             val key = message.notificationKey.orEmpty()
             return when (message.sourceApp) {
                 MessageSourceApp.WHATSAPP -> key.startsWith("a11y:")
-                MessageSourceApp.SMS -> key.startsWith("sms:")
+                MessageSourceApp.SMS -> key.startsWith("sms:") || key.startsWith("mms:")
             }
         }
 
