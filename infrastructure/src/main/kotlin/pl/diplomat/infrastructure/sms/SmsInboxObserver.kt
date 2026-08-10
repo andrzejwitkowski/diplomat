@@ -123,13 +123,11 @@ class SmsInboxObserver(
         val rows = mms.querySince(todayStartMillis() / 1_000L).filter { it.id <= upToId }
         var saved = 0
         for (row in rows) {
-            val address = mms.queryAddress(row.id, row.messageBox) ?: continue
-            val body = mms.queryText(row.id) ?: continue
-            val raw = MmsRowMapper.toRaw(row.id, address, body, row.dateSeconds, row.messageBox) ?: continue
+            val raw = rawFromMms(row) ?: continue
             when (process(raw)) {
                 is ProcessIncomingMessageResult.Saved -> saved++
                 ProcessIncomingMessageResult.RejectedNotWhitelisted ->
-                    DevLog.log("SMS", "mms backfill rejected addr=$address id=${row.id}")
+                    DevLog.log("SMS", "mms backfill rejected addr=${raw.senderPhone} id=${row.id}")
                 ProcessIncomingMessageResult.IgnoredDuplicate -> Unit
             }
         }
@@ -168,17 +166,25 @@ class SmsInboxObserver(
                 pendingIds.add(row.id)
                 continue
             }
-            val address = mms.queryAddress(row.id, row.messageBox)
-            val body = mms.queryText(row.id)
-            if (address != null && body != null) {
-                val raw = MmsRowMapper.toRaw(row.id, address, body, row.dateSeconds, row.messageBox)
-                if (raw != null) logProcess("SMS", row.id, address, raw, process(raw), prefix = "mms ")
-            }
+            val raw = rawFromMms(row)
+            if (raw != null) logProcess("SMS", row.id, raw.senderPhone, raw, process(raw), prefix = "mms ")
         }
         val maxId = advanceCheckpoint(rows.map { it.id }, pendingIds, afterId)
         if (maxId > afterId) {
             prefs.edit().putLong(KEY_LAST_MMS_ID, maxId).apply()
         }
+    }
+
+    private fun rawFromMms(row: MmsTelephonyQueries.MmsRow): RawIncomingMessage? {
+        val address = mms.queryAddress(row.id, row.messageBox) ?: return null
+        val parts = mms.queryContent(row.id) ?: return null
+        return MmsRowMapper.toRaw(
+            id = row.id,
+            address = address,
+            parts = parts,
+            dateSeconds = row.dateSeconds,
+            messageBox = row.messageBox,
+        )
     }
 
     private fun logProcess(
