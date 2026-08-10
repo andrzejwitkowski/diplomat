@@ -44,6 +44,7 @@ class WhitelistViewModel(
     private val removeContactFromWhitelist: RemoveContactFromWhitelistUseCase,
     private val systemContacts: SystemContactsPort,
     private val avatarStorage: AvatarStoragePort,
+    private val onWhitelistChanged: () -> Unit = {},
 ) : ViewModel() {
 
     private val editor = MutableStateFlow<EditorState?>(null)
@@ -106,6 +107,7 @@ class WhitelistViewModel(
             }.onSuccess {
                 editor.value = null
                 message.value = null
+                onWhitelistChanged()
             }.onFailure {
                 message.value = it.message ?: "Save failed"
             }

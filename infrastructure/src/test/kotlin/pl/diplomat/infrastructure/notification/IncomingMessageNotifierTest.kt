@@ -36,6 +36,14 @@ class IncomingMessageNotifierTest {
                 ),
             ),
         )
+        assertTrue(
+            IncomingMessageNotifier.shouldAlertUser(
+                pending(
+                    sourceApp = MessageSourceApp.SMS,
+                    notificationKey = "mms:7",
+                ),
+            ),
+        )
         assertFalse(
             IncomingMessageNotifier.shouldAlertUser(
                 pending(

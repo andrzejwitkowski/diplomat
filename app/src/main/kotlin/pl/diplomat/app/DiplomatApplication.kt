@@ -153,6 +153,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(contactRepository),
             systemContacts = systemContacts,
             avatarStorage = avatarStorage,
+            onWhitelistChanged = smsInboxObserver::resyncToday,
         )
     }
 
