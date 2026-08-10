@@ -41,7 +41,11 @@ class SmsInboxObserver(
                 if (!prefs.contains(KEY_LAST_ID)) {
                     prefs.edit().putLong(KEY_LAST_ID, 0L).apply()
                 }
-                val snapshotMaxId = queryMaxId() ?: 0L
+                val snapshotMaxId = queryMaxId()
+                if (snapshotMaxId == null) {
+                    DevLog.log("SMS", "max id query failed, will retry on next start")
+                    return@withLock
+                }
                 if (!prefs.getBoolean(KEY_BACKFILL_TODAY_DONE, false)) {
                     backfillToday(snapshotMaxId)
                     prefs.edit()
@@ -52,6 +56,7 @@ class SmsInboxObserver(
                 syncNewInternal()
                 context.contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, observer)
                 registered = true
+                syncNewInternal()
                 DevLog.log("SMS", "observer started lastId=${lastSeenId()}")
             }
         }
@@ -64,9 +69,12 @@ class SmsInboxObserver(
     private fun lastSeenId(): Long = prefs.getLong(KEY_LAST_ID, 0L)
 
     private fun syncNew() {
-        if (!hasReadSmsPermission() || !registered) return
+        if (!hasReadSmsPermission()) return
         scope.launch {
-            syncMutex.withLock { syncNewInternal() }
+            syncMutex.withLock {
+                if (!registered) return@withLock
+                syncNewInternal()
+            }
         }
     }
 
@@ -125,9 +133,7 @@ class SmsInboxObserver(
             null,
             "${Telephony.Sms._ID} DESC",
         )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                return cursor.getLong(0)
-            }
+            return if (cursor.moveToFirst()) cursor.getLong(0) else 0L
         }
         return null
     }
