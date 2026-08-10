@@ -41,6 +41,22 @@ class MmsRowMapperTest {
     }
 
     @Test
+    fun pendingOutboundTypesAreHeld() {
+        assertTrue(MmsRowMapper.isPendingOutbound(Telephony.Mms.MESSAGE_BOX_OUTBOX))
+        assertFalse(MmsRowMapper.isPendingOutbound(Telephony.Mms.MESSAGE_BOX_SENT))
+        assertFalse(MmsRowMapper.isPendingOutbound(Telephony.Mms.MESSAGE_BOX_INBOX))
+        assertNull(
+            MmsRowMapper.toRaw(
+                id = 1L,
+                address = "+48111111111",
+                body = "x",
+                dateSeconds = 1L,
+                messageBox = Telephony.Mms.MESSAGE_BOX_OUTBOX,
+            ),
+        )
+    }
+
+    @Test
     fun toRawSkipsDraftBlankAndNonPositive() {
         assertNull(
             MmsRowMapper.toRaw(

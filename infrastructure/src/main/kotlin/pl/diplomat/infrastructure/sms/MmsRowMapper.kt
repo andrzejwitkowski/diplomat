@@ -9,6 +9,10 @@ object MmsRowMapper {
     fun isOutgoing(messageBox: Int): Boolean =
         messageBox == Telephony.Mms.MESSAGE_BOX_SENT
 
+    /** Outbox rows keep the same `_id` when they become sent — do not checkpoint past them. */
+    fun isPendingOutbound(messageBox: Int): Boolean =
+        messageBox == Telephony.Mms.MESSAGE_BOX_OUTBOX
+
     fun toRaw(
         id: Long,
         address: String,

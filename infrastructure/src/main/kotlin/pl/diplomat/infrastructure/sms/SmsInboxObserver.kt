@@ -144,16 +144,16 @@ class SmsInboxObserver(
     private suspend fun syncNewSms() {
         val afterId = lastSeenSmsId()
         val rows = querySmsAfter(afterId)
-        var maxId = afterId
+        val pendingIds = mutableSetOf<Long>()
         for (row in rows) {
             if (SmsRowMapper.isPendingOutbound(row.type)) {
-                maxId = row.id
+                pendingIds.add(row.id)
                 continue
             }
             val raw = SmsRowMapper.toRaw(row.id, row.address, row.body, row.date, row.type)
             if (raw != null) logProcess("SMS", row.id, row.address, raw, process(raw))
-            maxId = row.id
         }
+        val maxId = advanceCheckpoint(rows.map { it.id }, pendingIds, afterId)
         if (maxId > afterId) {
             prefs.edit().putLong(KEY_LAST_SMS_ID, maxId).apply()
         }
@@ -162,16 +162,20 @@ class SmsInboxObserver(
     private suspend fun syncNewMms() {
         val afterId = lastSeenMmsId()
         val rows = mms.queryAfter(afterId)
-        var maxId = afterId
+        val pendingIds = mutableSetOf<Long>()
         for (row in rows) {
+            if (MmsRowMapper.isPendingOutbound(row.messageBox)) {
+                pendingIds.add(row.id)
+                continue
+            }
             val address = mms.queryAddress(row.id, row.messageBox)
             val body = mms.queryText(row.id)
             if (address != null && body != null) {
                 val raw = MmsRowMapper.toRaw(row.id, address, body, row.dateSeconds, row.messageBox)
                 if (raw != null) logProcess("SMS", row.id, address, raw, process(raw), prefix = "mms ")
             }
-            maxId = row.id
         }
+        val maxId = advanceCheckpoint(rows.map { it.id }, pendingIds, afterId)
         if (maxId > afterId) {
             prefs.edit().putLong(KEY_LAST_MMS_ID, maxId).apply()
         }
@@ -293,10 +297,10 @@ class SmsInboxObserver(
         ): Long {
             var maxId = afterId
             for (id in rowIds) {
-                if (id in pendingIds) {
-                    maxId = id
-                    continue
-                }
+                // Hold before the first pending outbox/queued id so the same `_id` is
+                // re-queried when it becomes sent. Later non-pending rows are still
+                // processed by the caller; they will be deduped on the next pass.
+                if (id in pendingIds) return maxId
                 maxId = id
             }
             return maxId
