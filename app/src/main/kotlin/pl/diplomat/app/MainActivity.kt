@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
                         otaUpdateViewModel = application.otaUpdateViewModel,
                         whitelistViewModel = application.whitelistViewModel,
                         conversationDetailViewModelFactory = application.conversationDetailViewModelFactory,
+                        onSmsPermissionGranted = application::startSmsInboxObserver,
                     )
                 }
             }

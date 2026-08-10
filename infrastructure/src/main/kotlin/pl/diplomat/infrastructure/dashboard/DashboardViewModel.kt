@@ -21,6 +21,7 @@ sealed interface DashboardUiState {
         val isPostNotificationsEnabled: Boolean,
         val isAccessibilityServiceEnabled: Boolean,
         val isBatteryOptimizationIgnored: Boolean,
+        val isReadSmsGranted: Boolean,
         val buildInfo: AppBuildInfo,
         val selectedThread: ConversationThread? = null,
     ) : DashboardUiState
@@ -33,6 +34,7 @@ data class DashboardPermissionState(
     val postNotifications: Boolean = true,
     val accessibility: Boolean = false,
     val batteryIgnored: Boolean = true,
+    val readSms: Boolean = false,
 )
 
 class DashboardViewModel(
@@ -56,6 +58,7 @@ class DashboardViewModel(
             isPostNotificationsEnabled = perms.postNotifications,
             isAccessibilityServiceEnabled = perms.accessibility,
             isBatteryOptimizationIgnored = perms.batteryIgnored,
+            isReadSmsGranted = perms.readSms,
             buildInfo = info,
             selectedThread = thread,
         )

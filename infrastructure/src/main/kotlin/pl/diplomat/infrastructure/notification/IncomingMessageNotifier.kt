@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.model.MessageStatus
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.domain.model.bodyText
@@ -17,7 +18,7 @@ import pl.diplomat.infrastructure.R
 class IncomingMessageNotifier(private val context: Context) {
 
     fun notify(contact: WhitelistedContact, message: IncomingMessage) {
-        if (message.status != MessageStatus.PENDING) return
+        if (!shouldAlertUser(message)) return
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         try {
@@ -55,6 +56,15 @@ class IncomingMessageNotifier(private val context: Context) {
         const val CHANNEL_ID = "incoming_messages"
         const val FOREGROUND_CHANNEL_ID = "foreground_service"
         private const val MESSAGE_NOTIFICATION_ID_BASE = 10_000
+
+        internal fun shouldAlertUser(message: IncomingMessage): Boolean {
+            if (message.status != MessageStatus.PENDING || message.isOutgoing) return false
+            val key = message.notificationKey.orEmpty()
+            return when (message.sourceApp) {
+                MessageSourceApp.WHATSAPP -> key.startsWith("a11y:")
+                MessageSourceApp.SMS -> key.startsWith("sms:")
+            }
+        }
 
         fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

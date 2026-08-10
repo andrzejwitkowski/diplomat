@@ -142,7 +142,7 @@ class WhatsAppNodeMessageExtractorTest {
 class AccessibilityCaptureSessionTest {
 
     @Test
-    fun firstScanBaselinesWithoutEmitting() {
+    fun firstScanEmitsVisibleBaseline() {
         val session = AccessibilityCaptureSession()
         val first = session.onScan(
             "Alice",
@@ -151,7 +151,13 @@ class AccessibilityCaptureSessionTest {
                 WhatsAppNodeMessageExtractor.MessageCandidate("older", true),
             ),
         )
-        assertTrue(first.isEmpty())
+        assertEquals(
+            listOf(
+                WhatsAppNodeMessageExtractor.MessageCandidate("old", false, occurrence = 0),
+                WhatsAppNodeMessageExtractor.MessageCandidate("older", true, occurrence = 0),
+            ),
+            first,
+        )
     }
 
     @Test
@@ -175,12 +181,14 @@ class AccessibilityCaptureSessionTest {
     @Test
     fun conversationSwitchResetsBaseline() {
         val session = AccessibilityCaptureSession()
-        session.onScan("Alice", listOf(WhatsAppNodeMessageExtractor.MessageCandidate("hi", false)))
         val afterSwitch = session.onScan(
             "Bob",
             listOf(WhatsAppNodeMessageExtractor.MessageCandidate("yo", false)),
         )
-        assertTrue(afterSwitch.isEmpty())
+        assertEquals(
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("yo", false, occurrence = 0)),
+            afterSwitch,
+        )
 
         val next = session.onScan(
             "Bob",
