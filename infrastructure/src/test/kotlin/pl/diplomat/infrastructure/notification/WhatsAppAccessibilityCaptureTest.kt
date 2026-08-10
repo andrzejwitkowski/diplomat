@@ -181,6 +181,10 @@ class AccessibilityCaptureSessionTest {
     @Test
     fun conversationSwitchResetsBaseline() {
         val session = AccessibilityCaptureSession()
+        session.onScan(
+            "Alice",
+            listOf(WhatsAppNodeMessageExtractor.MessageCandidate("old", false)),
+        )
         val afterSwitch = session.onScan(
             "Bob",
             listOf(WhatsAppNodeMessageExtractor.MessageCandidate("yo", false)),
