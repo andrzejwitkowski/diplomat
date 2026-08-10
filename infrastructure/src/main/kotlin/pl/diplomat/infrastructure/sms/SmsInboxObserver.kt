@@ -11,17 +11,21 @@ import android.provider.Telephony
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.usecase.ProcessIncomingMessageResult
 import pl.diplomat.usecase.RawIncomingMessage
+import java.time.LocalDate
+import java.time.ZoneId
 
-/** # ponytail: no historical backfill — seeds lastSeenId to current max on first run. */
 class SmsInboxObserver(
     private val context: Context,
     private val scope: CoroutineScope,
     private val process: suspend (RawIncomingMessage) -> ProcessIncomingMessageResult,
 ) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val syncMutex = Mutex()
     private var registered = false
 
     private val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
@@ -30,15 +34,32 @@ class SmsInboxObserver(
     }
 
     fun start() {
-        if (registered) return
         if (!hasReadSmsPermission()) return
-        if (!prefs.contains(KEY_LAST_ID)) {
-            seedLastSeenToMax()
+        scope.launch {
+            syncMutex.withLock {
+                if (registered) return@withLock
+                if (!prefs.contains(KEY_LAST_ID)) {
+                    prefs.edit().putLong(KEY_LAST_ID, 0L).apply()
+                }
+                val snapshotMaxId = queryMaxId()
+                if (snapshotMaxId == null) {
+                    DevLog.log("SMS", "max id query failed, will retry on next start")
+                    return@withLock
+                }
+                if (!prefs.getBoolean(KEY_BACKFILL_TODAY_DONE, false)) {
+                    backfillToday(snapshotMaxId)
+                    prefs.edit()
+                        .putBoolean(KEY_BACKFILL_TODAY_DONE, true)
+                        .putLong(KEY_LAST_ID, maxOf(lastSeenId(), snapshotMaxId))
+                        .apply()
+                }
+                syncNewInternal()
+                context.contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, observer)
+                registered = true
+                syncNewInternal()
+                DevLog.log("SMS", "observer started lastId=${lastSeenId()}")
+            }
         }
-        syncNew()
-        context.contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, observer)
-        registered = true
-        DevLog.log("SMS", "observer started lastId=${lastSeenId()}")
     }
 
     private fun hasReadSmsPermission(): Boolean =
@@ -47,42 +68,60 @@ class SmsInboxObserver(
 
     private fun lastSeenId(): Long = prefs.getLong(KEY_LAST_ID, 0L)
 
-    private fun seedLastSeenToMax() {
-        val maxId = queryMaxId() ?: 0L
-        prefs.edit().putLong(KEY_LAST_ID, maxId).apply()
-        DevLog.log("SMS", "seeded lastId=$maxId")
-    }
-
     private fun syncNew() {
         if (!hasReadSmsPermission()) return
         scope.launch {
-            val afterId = lastSeenId()
-            val rows = queryAfter(afterId)
-            var maxId = afterId
-            var sawPendingOutbound = false
-            for (row in rows) {
-                if (SmsRowMapper.isPendingOutbound(row.type)) {
-                    sawPendingOutbound = true
-                    continue
-                }
-                val raw = SmsRowMapper.toRaw(row.id, row.address, row.body, row.date, row.type)
-                if (raw == null) {
-                    if (!sawPendingOutbound && row.id > maxId) maxId = row.id
-                    continue
-                }
+            syncMutex.withLock {
+                if (!registered) return@withLock
+                syncNewInternal()
+            }
+        }
+    }
+
+    private suspend fun backfillToday(upToId: Long) {
+        val todayStart = LocalDate.now()
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val rows = querySinceDate(todayStart).filter { it.id <= upToId }
+        var saved = 0
+        for (row in rows) {
+            if (SmsRowMapper.isPendingOutbound(row.type)) continue
+            val raw = SmsRowMapper.toRaw(row.id, row.address, row.body, row.date, row.type) ?: continue
+            when (process(raw)) {
+                is ProcessIncomingMessageResult.Saved -> saved++
+                ProcessIncomingMessageResult.RejectedNotWhitelisted ->
+                    DevLog.log("SMS", "backfill rejected addr=${row.address} id=${row.id}")
+                ProcessIncomingMessageResult.IgnoredDuplicate -> Unit
+            }
+        }
+        DevLog.log("SMS", "backfill today rows=${rows.size} saved=$saved upToId=$upToId")
+    }
+
+    private suspend fun syncNewInternal() {
+        val afterId = lastSeenId()
+        val rows = queryAfter(afterId)
+        var maxId = afterId
+        for (row in rows) {
+            if (SmsRowMapper.isPendingOutbound(row.type)) {
+                maxId = row.id
+                continue
+            }
+            val raw = SmsRowMapper.toRaw(row.id, row.address, row.body, row.date, row.type)
+            if (raw != null) {
                 when (val result = process(raw)) {
                     is ProcessIncomingMessageResult.Saved ->
                         DevLog.log("SMS", "saved outgoing=${raw.isOutgoing} id=${row.id}")
                     ProcessIncomingMessageResult.RejectedNotWhitelisted ->
-                        DevLog.log("SMS", "rejected id=${row.id}")
+                        DevLog.log("SMS", "rejected addr=${row.address} id=${row.id}")
                     ProcessIncomingMessageResult.IgnoredDuplicate ->
                         DevLog.log("SMS", "duplicate id=${row.id}")
                 }
-                if (!sawPendingOutbound && row.id > maxId) maxId = row.id
             }
-            if (maxId > afterId) {
-                prefs.edit().putLong(KEY_LAST_ID, maxId).apply()
-            }
+            maxId = row.id
+        }
+        if (maxId > afterId) {
+            prefs.edit().putLong(KEY_LAST_ID, maxId).apply()
         }
     }
 
@@ -94,44 +133,56 @@ class SmsInboxObserver(
             null,
             "${Telephony.Sms._ID} DESC",
         )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                return cursor.getLong(0)
-            }
+            return if (cursor.moveToFirst()) cursor.getLong(0) else 0L
         }
         return null
+    }
+
+    private fun querySinceDate(sinceMillis: Long): List<SmsRow> {
+        val rows = mutableListOf<SmsRow>()
+        context.contentResolver.query(
+            Telephony.Sms.CONTENT_URI,
+            SMS_COLUMNS,
+            "${Telephony.Sms.DATE} >= ?",
+            arrayOf(sinceMillis.toString()),
+            "${Telephony.Sms._ID} ASC",
+        )?.use { cursor ->
+            rows.addAll(readRows(cursor))
+        }
+        return rows
     }
 
     private fun queryAfter(afterId: Long): List<SmsRow> {
         val rows = mutableListOf<SmsRow>()
         context.contentResolver.query(
             Telephony.Sms.CONTENT_URI,
-            arrayOf(
-                Telephony.Sms._ID,
-                Telephony.Sms.ADDRESS,
-                Telephony.Sms.BODY,
-                Telephony.Sms.DATE,
-                Telephony.Sms.TYPE,
-            ),
+            SMS_COLUMNS,
             "${Telephony.Sms._ID} > ?",
             arrayOf(afterId.toString()),
             "${Telephony.Sms._ID} ASC",
         )?.use { cursor ->
-            val idIdx = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
-            val addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-            val bodyIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
-            val dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
-            val typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-            while (cursor.moveToNext()) {
-                rows.add(
-                    SmsRow(
-                        id = cursor.getLong(idIdx),
-                        address = cursor.getString(addressIdx).orEmpty(),
-                        body = cursor.getString(bodyIdx).orEmpty(),
-                        date = cursor.getLong(dateIdx),
-                        type = cursor.getInt(typeIdx),
-                    ),
-                )
-            }
+            rows.addAll(readRows(cursor))
+        }
+        return rows
+    }
+
+    private fun readRows(cursor: android.database.Cursor): List<SmsRow> {
+        val idIdx = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+        val addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+        val bodyIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+        val dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+        val typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+        val rows = mutableListOf<SmsRow>()
+        while (cursor.moveToNext()) {
+            rows.add(
+                SmsRow(
+                    id = cursor.getLong(idIdx),
+                    address = cursor.getString(addressIdx).orEmpty(),
+                    body = cursor.getString(bodyIdx).orEmpty(),
+                    date = cursor.getLong(dateIdx),
+                    type = cursor.getInt(typeIdx),
+                ),
+            )
         }
         return rows
     }
@@ -147,5 +198,30 @@ class SmsInboxObserver(
     companion object {
         private const val PREFS = "sms_sync"
         private const val KEY_LAST_ID = "last_seen_id"
+        private const val KEY_BACKFILL_TODAY_DONE = "backfill_today_done"
+
+        private val SMS_COLUMNS = arrayOf(
+            Telephony.Sms._ID,
+            Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY,
+            Telephony.Sms.DATE,
+            Telephony.Sms.TYPE,
+        )
+
+        internal fun advanceCheckpoint(
+            rowIds: List<Long>,
+            pendingIds: Set<Long>,
+            afterId: Long,
+        ): Long {
+            var maxId = afterId
+            for (id in rowIds) {
+                if (id in pendingIds) {
+                    maxId = id
+                    continue
+                }
+                maxId = id
+            }
+            return maxId
+        }
     }
 }

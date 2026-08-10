@@ -70,6 +70,7 @@ import pl.diplomat.infrastructure.notification.AccessibilityServicePermission
 import pl.diplomat.infrastructure.notification.BatteryOptimizationPermission
 import pl.diplomat.infrastructure.notification.NotificationListenerPermission
 import pl.diplomat.infrastructure.notification.PostNotificationsPermission
+import pl.diplomat.infrastructure.sms.ReadSmsPermission
 import pl.diplomat.presentation.R
 import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
@@ -82,6 +83,7 @@ fun DashboardRoute(
     otaUpdateViewModel: OtaUpdateViewModel,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
+    onSmsPermissionGranted: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -90,6 +92,22 @@ fun DashboardRoute(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         viewModel.refreshPostNotificationsPermission(granted)
+    }
+    val requestReadSms = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            onSmsPermissionGranted()
+        }
+        viewModel.refreshPermissions(
+            DashboardPermissionState(
+                notificationListener = NotificationListenerPermission.isGranted(context),
+                postNotifications = PostNotificationsPermission.isGranted(context),
+                accessibility = AccessibilityServicePermission.isGranted(context),
+                batteryIgnored = BatteryOptimizationPermission.isIgnoring(context),
+                readSms = ReadSmsPermission.isGranted(context),
+            ),
+        )
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -101,6 +119,7 @@ fun DashboardRoute(
                         postNotifications = PostNotificationsPermission.isGranted(context),
                         accessibility = AccessibilityServicePermission.isGranted(context),
                         batteryIgnored = BatteryOptimizationPermission.isIgnoring(context),
+                        readSms = ReadSmsPermission.isGranted(context),
                     ),
                 )
             }
@@ -129,6 +148,7 @@ fun DashboardRoute(
                 isPostNotificationsEnabled = state.isPostNotificationsEnabled,
                 isAccessibilityServiceEnabled = state.isAccessibilityServiceEnabled,
                 isBatteryOptimizationIgnored = state.isBatteryOptimizationIgnored,
+                isReadSmsGranted = state.isReadSmsGranted,
                 buildInfo = state.buildInfo,
                 otaUpdateViewModel = otaUpdateViewModel,
                 onOpenNotificationSettings = {
@@ -148,6 +168,9 @@ fun DashboardRoute(
                     }.onFailure {
                         context.startActivity(BatteryOptimizationPermission.settingsIntent())
                     }
+                },
+                onRequestReadSms = {
+                    requestReadSms.launch(Manifest.permission.READ_SMS)
                 },
                 onOpenWhitelist = onOpenWhitelist,
                 onThreadClick = { thread ->
@@ -170,12 +193,14 @@ fun DashboardScreen(
     isPostNotificationsEnabled: Boolean,
     isAccessibilityServiceEnabled: Boolean,
     isBatteryOptimizationIgnored: Boolean,
+    isReadSmsGranted: Boolean,
     buildInfo: AppBuildInfo,
     otaUpdateViewModel: OtaUpdateViewModel,
     onOpenNotificationSettings: () -> Unit,
     onRequestPostNotifications: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
     onRequestBatteryOptimization: () -> Unit,
+    onRequestReadSms: () -> Unit,
     onOpenWhitelist: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
     onCopyDebugLogs: () -> Unit,
@@ -220,6 +245,14 @@ fun DashboardScreen(
                     message = stringResource(R.string.battery_optimization_required),
                     actionLabel = stringResource(R.string.grant_permission),
                     onAction = onRequestBatteryOptimization,
+                )
+            }
+
+            if (!isReadSmsGranted) {
+                NotificationPermissionBanner(
+                    message = stringResource(R.string.read_sms_required),
+                    actionLabel = stringResource(R.string.grant_permission),
+                    onAction = onRequestReadSms,
                 )
             }
 

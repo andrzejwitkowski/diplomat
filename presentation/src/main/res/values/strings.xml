@@ -21,6 +21,7 @@
     <string name="accessibility_service_required">Accessibility access is required to capture WhatsApp chats (including your replies) while the chat is open.</string>
     <string name="battery_optimization_required">Disable battery optimization so Android does not stop Diplomat in the background.</string>
     <string name="post_notifications_required">Allow notifications so Diplomat can alert you when a whitelisted contact messages you.</string>
+    <string name="read_sms_required">SMS read permission is required to capture text messages from your inbox.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="open_settings">Open settings</string>
     <string name="open_whitelist">Manage whitelist</string>

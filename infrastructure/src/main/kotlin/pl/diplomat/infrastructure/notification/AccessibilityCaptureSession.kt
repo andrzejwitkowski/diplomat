@@ -11,11 +11,16 @@ class AccessibilityCaptureSession {
         if (contactKey != this.contactKey) {
             this.contactKey = contactKey
             knownCounts.clear()
+            val fresh = mutableListOf<WhatsAppNodeMessageExtractor.MessageCandidate>()
+            val seenThisScan = mutableMapOf<String, Int>()
             for (candidate in candidates) {
                 val key = contentKey(candidate)
-                knownCounts[key] = (knownCounts[key] ?: 0) + 1
+                val occurrence = seenThisScan[key] ?: 0
+                seenThisScan[key] = occurrence + 1
+                knownCounts[key] = occurrence + 1
+                fresh.add(candidate.copy(occurrence = occurrence))
             }
-            return emptyList()
+            return fresh
         }
 
         val fresh = mutableListOf<WhatsAppNodeMessageExtractor.MessageCandidate>()

@@ -22,6 +22,7 @@ fun DiplomatApp(
     otaUpdateViewModel: OtaUpdateViewModel,
     whitelistViewModel: WhitelistViewModel,
     conversationDetailViewModelFactory: (WhitelistedContact) -> ConversationDetailViewModel,
+    onSmsPermissionGranted: () -> Unit = {},
 ) {
     var destination by remember { mutableStateOf<DiplomatDestination>(DiplomatDestination.Dashboard) }
 
@@ -45,6 +46,7 @@ fun DiplomatApp(
                 onThreadClick = { thread ->
                     destination = DiplomatDestination.ConversationDetail(thread)
                 },
+                onSmsPermissionGranted = onSmsPermissionGranted,
             )
         }
 
