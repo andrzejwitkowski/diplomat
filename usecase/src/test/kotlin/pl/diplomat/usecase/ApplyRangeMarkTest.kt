@@ -81,4 +81,23 @@ class ApplyRangeMarkTest {
         assertEquals(1L, after.startMessageId)
         assertNull(after.endMessageId)
     }
+
+    @Test
+    fun `edit start keeps end when same channel`() {
+        val start = anIncomingMessage().withId(1).withTimestamp(100).build()
+        val end = anIncomingMessage().withId(3).withTimestamp(300).build()
+        val current = (applyRangeMark(contactId, null, RangeMarkAction.SetStart(start))
+            as ApplyRangeMarkResult.Applied).range
+        val complete = (applyRangeMark(contactId, current, RangeMarkAction.SetEnd(end, start))
+            as ApplyRangeMarkResult.Applied).range
+
+        val newStart = anIncomingMessage().withId(2).withTimestamp(200).build()
+        val edited = (applyRangeMark(
+            contactId,
+            complete,
+            RangeMarkAction.SetStart(newStart, keepEnd = end),
+        ) as ApplyRangeMarkResult.Applied).range!!
+        assertEquals(2L, edited.startMessageId)
+        assertEquals(3L, edited.endMessageId)
+    }
 }

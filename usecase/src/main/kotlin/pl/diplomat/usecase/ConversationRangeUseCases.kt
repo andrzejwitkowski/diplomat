@@ -6,7 +6,12 @@ import pl.diplomat.domain.port.ConversationRangePort
 import kotlinx.coroutines.flow.Flow
 
 sealed interface RangeMarkAction {
-    data class SetStart(val message: IncomingMessage) : RangeMarkAction
+    /** [keepEnd] when editing start — preserves end if same channel (reorders by time if needed). */
+    data class SetStart(
+        val message: IncomingMessage,
+        val keepEnd: IncomingMessage? = null,
+    ) : RangeMarkAction
+
     data class SetEnd(val message: IncomingMessage, val startMessage: IncomingMessage) : RangeMarkAction
     data object ClearStart : RangeMarkAction
     data object ClearEnd : RangeMarkAction
@@ -17,30 +22,46 @@ sealed interface ApplyRangeMarkResult {
     data object RejectedWrongChannel : ApplyRangeMarkResult
 }
 
+private fun orderedBounds(a: IncomingMessage, b: IncomingMessage): Pair<Long, Long> {
+    val aFirst = a.timestamp < b.timestamp || (a.timestamp == b.timestamp && a.id <= b.id)
+    return if (aFirst) a.id to b.id else b.id to a.id
+}
+
 fun applyRangeMark(
     contactId: Long,
     current: ConversationRange?,
     action: RangeMarkAction,
 ): ApplyRangeMarkResult = when (action) {
-    is RangeMarkAction.SetStart -> ApplyRangeMarkResult.Applied(
-        ConversationRange(
-            contactId = contactId,
-            sourceApp = action.message.sourceApp,
-            startMessageId = action.message.id,
-            endMessageId = null,
-        ),
-    )
+    is RangeMarkAction.SetStart -> {
+        val keep = action.keepEnd?.takeIf { it.sourceApp == action.message.sourceApp }
+        if (keep == null) {
+            ApplyRangeMarkResult.Applied(
+                ConversationRange(
+                    contactId = contactId,
+                    sourceApp = action.message.sourceApp,
+                    startMessageId = action.message.id,
+                    endMessageId = null,
+                ),
+            )
+        } else {
+            val (startId, endId) = orderedBounds(action.message, keep)
+            ApplyRangeMarkResult.Applied(
+                ConversationRange(
+                    contactId = contactId,
+                    sourceApp = action.message.sourceApp,
+                    startMessageId = startId,
+                    endMessageId = endId,
+                ),
+            )
+        }
+    }
     is RangeMarkAction.SetEnd -> {
         if (current?.startMessageId == null) {
             ApplyRangeMarkResult.Applied(current)
         } else if (action.message.sourceApp != current.sourceApp) {
             ApplyRangeMarkResult.RejectedWrongChannel
         } else {
-            val start = action.startMessage
-            val end = action.message
-            val orderedEarlier = end.timestamp < start.timestamp ||
-                (end.timestamp == start.timestamp && end.id < start.id)
-            val (startId, endId) = if (orderedEarlier) end.id to start.id else start.id to end.id
+            val (startId, endId) = orderedBounds(action.startMessage, action.message)
             ApplyRangeMarkResult.Applied(
                 current.copy(startMessageId = startId, endMessageId = endId),
             )

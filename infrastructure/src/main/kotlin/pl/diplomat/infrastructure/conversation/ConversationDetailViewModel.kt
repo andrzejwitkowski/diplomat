@@ -79,6 +79,16 @@ class ConversationDetailViewModel(
         }
     }
 
+    private fun contentOrNull(): ConversationDetailUiState.Content? =
+        uiState.value as? ConversationDetailUiState.Content
+
+    private fun findMessage(id: Long): IncomingMessage? =
+        contentOrNull()
+            ?.channelGroups
+            ?.asSequence()
+            ?.flatMap { it.messages.asSequence() }
+            ?.find { it.id == id }
+
     fun enterMarkMode() {
         continueToEndAfterStart = true
         markMode.value = MarkMode.PickingStart
@@ -94,7 +104,13 @@ class ConversationDetailViewModel(
     }
 
     fun editEnd() {
-        markMode.value = MarkMode.PickingEnd
+        val startId = contentOrNull()?.range?.startMessageId
+        if (startId == null) {
+            continueToEndAfterStart = true
+            markMode.value = MarkMode.PickingStart
+        } else {
+            markMode.value = MarkMode.PickingEnd
+        }
     }
 
     fun deleteStart() {
@@ -111,18 +127,25 @@ class ConversationDetailViewModel(
         when (markMode.value) {
             MarkMode.Idle -> Unit
             MarkMode.PickingStart -> {
-                updateConversationRange(contact.id, RangeMarkAction.SetStart(message))
+                val keepEnd = if (!continueToEndAfterStart) {
+                    contentOrNull()?.range?.endMessageId?.let(::findMessage)
+                } else {
+                    null
+                }
+                updateConversationRange(
+                    contact.id,
+                    RangeMarkAction.SetStart(message, keepEnd = keepEnd),
+                )
                 markMode.value =
                     if (continueToEndAfterStart) MarkMode.PickingEnd else MarkMode.Idle
             }
             MarkMode.PickingEnd -> {
-                val content = uiState.value as? ConversationDetailUiState.Content ?: return
-                val startId = content.range?.startMessageId ?: return
-                val startMessage = content.channelGroups
-                    .asSequence()
-                    .flatMap { it.messages.asSequence() }
-                    .find { it.id == startId }
-                    ?: return
+                val startId = contentOrNull()?.range?.startMessageId
+                val startMessage = startId?.let(::findMessage)
+                if (startMessage == null) {
+                    markMode.value = MarkMode.Idle
+                    return
+                }
                 when (updateConversationRange(contact.id, RangeMarkAction.SetEnd(message, startMessage))) {
                     ApplyRangeMarkResult.RejectedWrongChannel ->
                         viewModelScope.launch { _events.emit(ConversationDetailEvent.WrongChannel) }

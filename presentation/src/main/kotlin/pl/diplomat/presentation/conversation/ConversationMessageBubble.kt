@@ -38,9 +38,10 @@ import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
 import java.util.Date
 
-internal val StartBorder = Color(0xFF4ADE80)
-internal val EndBorder = Color(0xFFF87171)
+internal val StartBorder = Color(0xFF15803D)
+internal val EndBorder = Color(0xFFB91C1C)
 private val InRangeTint = Color(0xFF1E3A2E)
+private val InRangeTintContent = Color(0xFFDCFCE7)
 
 internal enum class RangeRole { None, Start, End, Interior }
 
@@ -80,10 +81,10 @@ internal fun ConversationMessageBubble(
         message.isOutgoing -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
-    val textColor = if (message.isOutgoing && role != RangeRole.Interior) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = when {
+        role == RangeRole.Interior -> InRangeTintContent
+        message.isOutgoing -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val formattedTime = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(message.timestamp))
     val directionLabel = if (message.isOutgoing) {
