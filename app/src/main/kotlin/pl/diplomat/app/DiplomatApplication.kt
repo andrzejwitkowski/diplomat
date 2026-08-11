@@ -34,8 +34,11 @@ import pl.diplomat.domain.normalization.NormalizationService
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
+import pl.diplomat.infrastructure.conversation.InMemoryConversationRangeStore
 import pl.diplomat.usecase.MarkConversationAsReadUseCase
 import pl.diplomat.usecase.ObserveContactMessagesUseCase
+import pl.diplomat.usecase.ObserveConversationRangeUseCase
+import pl.diplomat.usecase.UpdateConversationRangeUseCase
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
 import pl.diplomat.usecase.GetWhitelistedContactsUseCase
@@ -130,6 +133,9 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
 
         val observeContactMessages = ObserveContactMessagesUseCase(messageRepository)
         val markConversationAsRead = MarkConversationAsReadUseCase(messageRepository)
+        val conversationRangeStore = InMemoryConversationRangeStore()
+        val observeConversationRange = ObserveConversationRangeUseCase(conversationRangeStore)
+        val updateConversationRange = UpdateConversationRangeUseCase(conversationRangeStore)
 
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
@@ -143,6 +149,8 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
                 contact = contact,
                 observeContactMessages = observeContactMessages,
                 markConversationAsRead = markConversationAsRead,
+                observeConversationRange = observeConversationRange,
+                updateConversationRange = updateConversationRange,
             )
         }
 
