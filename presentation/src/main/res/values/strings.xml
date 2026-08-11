@@ -38,6 +38,17 @@
     <string name="message_preview_video_with_text">Video: %1$s</string>
     <string name="conversation_detail_title">Conversation</string>
     <string name="conversation_detail_empty">No messages yet.</string>
+    <string name="conversation_mark_start">Mark conversation</string>
+    <string name="conversation_mark_cancel">Cancel marking</string>
+    <string name="conversation_mark_pick_start">Tap a message for Start</string>
+    <string name="conversation_mark_pick_end">Tap a message for End</string>
+    <string name="conversation_mark_label_start">START</string>
+    <string name="conversation_mark_label_end">END</string>
+    <string name="conversation_mark_edit_start">Edit Start</string>
+    <string name="conversation_mark_edit_end">Edit End</string>
+    <string name="conversation_mark_delete_start">Delete Start</string>
+    <string name="conversation_mark_delete_end">Delete End</string>
+    <string name="conversation_mark_wrong_channel">Start and End must be in the same channel</string>
     <string name="channel_sms">SMS</string>
     <string name="channel_whatsapp">WhatsApp</string>
     <string name="channel_sms_badge">SMS</string>

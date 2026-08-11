@@ -4,46 +4,47 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.diplomat.domain.model.ChannelMessageGroup
+import pl.diplomat.domain.model.ConversationRange
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
 import pl.diplomat.domain.model.MessageSourceApp
-import pl.diplomat.domain.model.MessageStatus
+import pl.diplomat.infrastructure.conversation.ConversationDetailEvent
 import pl.diplomat.infrastructure.conversation.ConversationDetailUiState
 import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
+import pl.diplomat.infrastructure.conversation.MarkMode
 import pl.diplomat.presentation.R
-import pl.diplomat.presentation.dashboard.ChannelBadge
-import pl.diplomat.presentation.dashboard.MessageStatusLabel
-import pl.diplomat.presentation.message.previewText
-import java.text.DateFormat
-import java.util.Date
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun ConversationDetailRoute(
@@ -52,6 +53,17 @@ fun ConversationDetailRoute(
     onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val wrongChannelMessage = stringResource(R.string.conversation_mark_wrong_channel)
+
+    LaunchedEffect(thread.contact.id, viewModel) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                ConversationDetailEvent.WrongChannel ->
+                    snackbarHostState.showSnackbar(wrongChannelMessage)
+            }
+        }
+    }
 
     when (val state = uiState) {
         ConversationDetailUiState.Loading -> {
@@ -64,7 +76,17 @@ fun ConversationDetailRoute(
             ConversationDetailScreen(
                 contactName = state.contact.displayName,
                 channelGroups = state.channelGroups,
+                range = state.range,
+                markMode = state.markMode,
+                snackbarHostState = snackbarHostState,
                 onBack = onBack,
+                onEnterMarkMode = viewModel::enterMarkMode,
+                onCancelMarkMode = viewModel::cancelMarkMode,
+                onMessageClick = viewModel::onMessageClick,
+                onEditStart = viewModel::editStart,
+                onEditEnd = viewModel::editEnd,
+                onDeleteStart = viewModel::deleteStart,
+                onDeleteEnd = viewModel::deleteEnd,
             )
         }
     }
@@ -75,18 +97,76 @@ fun ConversationDetailRoute(
 fun ConversationDetailScreen(
     contactName: String,
     channelGroups: List<ChannelMessageGroup>,
+    range: ConversationRange?,
+    markMode: MarkMode,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
+    onEnterMarkMode: () -> Unit,
+    onCancelMarkMode: () -> Unit,
+    onMessageClick: (IncomingMessage) -> Unit,
+    onEditStart: () -> Unit,
+    onEditEnd: () -> Unit,
+    onDeleteStart: () -> Unit,
+    onDeleteEnd: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    val flatMessages = remember(channelGroups) { channelGroups.flatMap { it.messages } }
+    val itemCount = channelGroups.sumOf { 1 + it.messages.size }
+    var didScrollToLatest by remember { mutableStateOf(false) }
+
+    LaunchedEffect(itemCount) {
+        if (itemCount > 0 && !didScrollToLatest) {
+            listState.scrollToItem(itemCount - 1)
+            didScrollToLatest = true
+        }
+    }
+
+    val markModeActive = markMode != MarkMode.Idle
+    val markHint = when (markMode) {
+        MarkMode.Idle -> null
+        MarkMode.PickingStart -> stringResource(R.string.conversation_mark_pick_start)
+        MarkMode.PickingEnd -> stringResource(R.string.conversation_mark_pick_end)
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(contactName) },
+                title = {
+                    Column {
+                        Text(contactName)
+                        if (markHint != null) {
+                            Text(
+                                text = markHint,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
                         )
+                    }
+                },
+                actions = {
+                    if (markModeActive) {
+                        IconButton(onClick = onCancelMarkMode) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.conversation_mark_cancel),
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onEnterMarkMode) {
+                            Icon(
+                                Icons.Filled.Flag,
+                                contentDescription = stringResource(R.string.conversation_mark_start),
+                            )
+                        }
                     }
                 },
             )
@@ -107,6 +187,7 @@ fun ConversationDetailScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -121,6 +202,13 @@ fun ConversationDetailScreen(
                         ConversationMessageBubble(
                             message = message,
                             contactName = contactName,
+                            role = rangeRole(message, range, flatMessages),
+                            markModeActive = markModeActive,
+                            onMessageClick = { onMessageClick(message) },
+                            onEditStart = onEditStart,
+                            onEditEnd = onEditEnd,
+                            onDeleteStart = onDeleteStart,
+                            onDeleteEnd = onDeleteEnd,
                         )
                     }
                 }
@@ -142,85 +230,4 @@ private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
             .fillMaxWidth()
             .padding(top = 8.dp, bottom = 4.dp),
     )
-}
-
-@Composable
-private fun ConversationMessageBubble(
-    message: IncomingMessage,
-    contactName: String,
-) {
-    val alignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
-    val bubbleColor = if (message.isOutgoing) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val textColor = if (message.isOutgoing) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val timeFormatter = DateFormat.getTimeInstance(DateFormat.SHORT)
-    val formattedTime = timeFormatter.format(Date(message.timestamp))
-
-    val directionLabel = if (message.isOutgoing) {
-        stringResource(R.string.message_from_you)
-    } else {
-        stringResource(R.string.message_from_contact, contactName)
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = directionLabel },
-        contentAlignment = alignment,
-    ) {
-        Surface(
-            modifier = Modifier.widthIn(max = 300.dp),
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (message.isOutgoing) 16.dp else 4.dp,
-                bottomEnd = if (message.isOutgoing) 4.dp else 16.dp,
-            ),
-            color = bubbleColor,
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (!message.isOutgoing) {
-                    MessageChannelStatusBadges(
-                        status = message.status,
-                        sourceApp = message.sourceApp,
-                    )
-                }
-                Text(
-                    text = message.content.previewText(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor,
-                )
-                Text(
-                    text = formattedTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = textColor.copy(alpha = 0.7f),
-                    modifier = Modifier.align(Alignment.End),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun MessageChannelStatusBadges(
-    status: MessageStatus,
-    sourceApp: MessageSourceApp,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ChannelBadge(sourceApp = sourceApp)
-        MessageStatusLabel(status = status)
-    }
 }
