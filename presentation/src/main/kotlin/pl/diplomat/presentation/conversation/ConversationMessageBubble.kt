@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,11 +36,6 @@ import pl.diplomat.presentation.dashboard.MessageStatusLabel
 import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
 import java.util.Date
-
-internal val StartBorder = Color(0xFF15803D)
-internal val EndBorder = Color(0xFFB91C1C)
-private val InRangeTint = Color(0xFF1E3A2E)
-private val InRangeTintContent = Color(0xFFDCFCE7)
 
 internal enum class RangeRole { None, Start, End, Interior }
 
@@ -75,16 +69,19 @@ internal fun ConversationMessageBubble(
     onDeleteStart: () -> Unit,
     onDeleteEnd: () -> Unit,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val startAccent = colors.primary
+    val endAccent = colors.error
     val alignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = when {
-        role == RangeRole.Interior -> InRangeTint
-        message.isOutgoing -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        role == RangeRole.Interior -> colors.secondaryContainer
+        message.isOutgoing -> colors.primaryContainer
+        else -> colors.surfaceVariant
     }
     val textColor = when {
-        role == RangeRole.Interior -> InRangeTintContent
-        message.isOutgoing -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        role == RangeRole.Interior -> colors.onSecondaryContainer
+        message.isOutgoing -> colors.onPrimaryContainer
+        else -> colors.onSurfaceVariant
     }
     val formattedTime = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(message.timestamp))
     val directionLabel = if (message.isOutgoing) {
@@ -95,8 +92,8 @@ internal fun ConversationMessageBubble(
 
     var menuExpanded by remember { mutableStateOf(false) }
     val borderColor = when (role) {
-        RangeRole.Start -> StartBorder
-        RangeRole.End -> EndBorder
+        RangeRole.Start -> startAccent
+        RangeRole.End -> endAccent
         else -> null
     }
 
@@ -137,12 +134,12 @@ internal fun ConversationMessageBubble(
                     RangeRole.Start -> Text(
                         text = stringResource(R.string.conversation_mark_label_start),
                         style = MaterialTheme.typography.labelSmall,
-                        color = StartBorder,
+                        color = startAccent,
                     )
                     RangeRole.End -> Text(
                         text = stringResource(R.string.conversation_mark_label_end),
                         style = MaterialTheme.typography.labelSmall,
-                        color = EndBorder,
+                        color = endAccent,
                     )
                     else -> Unit
                 }
