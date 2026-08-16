@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -110,7 +110,6 @@ fun ConversationDetailScreen(
     onDeleteEnd: () -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val flatMessages = remember(channelGroups) { channelGroups.flatMap { it.messages } }
     val itemCount = channelGroups.sumOf { 1 + it.messages.size }
     var didScrollToLatest by remember { mutableStateOf(false) }
 
@@ -198,11 +197,13 @@ fun ConversationDetailScreen(
                     item(key = "header-${group.sourceApp}") {
                         ChannelSectionHeader(sourceApp = group.sourceApp)
                     }
-                    items(group.messages, key = { it.id }) { message ->
+                    val roles = rangeRoles(range, group.messages)
+                    itemsIndexed(group.messages, key = { _, message -> message.id }) { index, message ->
                         ConversationMessageBubble(
                             message = message,
                             contactName = contactName,
-                            role = rangeRole(message, range, flatMessages),
+                            role = roles[index],
+                            range = range,
                             markModeActive = markModeActive,
                             onMessageClick = { onMessageClick(message) },
                             onEditStart = onEditStart,

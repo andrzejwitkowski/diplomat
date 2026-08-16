@@ -1,5 +1,6 @@
 package pl.diplomat.presentation.conversation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,31 +38,12 @@ import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
 import java.util.Date
 
-internal enum class RangeRole { None, Start, End, Interior }
-
-internal fun rangeRole(
-    message: IncomingMessage,
-    range: ConversationRange?,
-    allMessages: List<IncomingMessage>,
-): RangeRole {
-    if (range == null) return RangeRole.None
-    if (message.id == range.startMessageId) return RangeRole.Start
-    if (message.id == range.endMessageId) return RangeRole.End
-    if (!range.isComplete || message.sourceApp != range.sourceApp) return RangeRole.None
-    val start = allMessages.find { it.id == range.startMessageId } ?: return RangeRole.None
-    val end = allMessages.find { it.id == range.endMessageId } ?: return RangeRole.None
-    val afterStart = message.timestamp > start.timestamp ||
-        (message.timestamp == start.timestamp && message.id > start.id)
-    val beforeEnd = message.timestamp < end.timestamp ||
-        (message.timestamp == end.timestamp && message.id < end.id)
-    return if (afterStart && beforeEnd) RangeRole.Interior else RangeRole.None
-}
-
 @Composable
 internal fun ConversationMessageBubble(
     message: IncomingMessage,
     contactName: String,
     role: RangeRole,
+    range: ConversationRange?,
     markModeActive: Boolean,
     onMessageClick: () -> Unit,
     onEditStart: () -> Unit,
@@ -74,12 +56,12 @@ internal fun ConversationMessageBubble(
     val endAccent = colors.error
     val alignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = when {
-        role == RangeRole.Interior -> colors.secondaryContainer
+        role == RangeRole.Interior -> colors.tertiaryContainer
         message.isOutgoing -> colors.primaryContainer
         else -> colors.surfaceVariant
     }
     val textColor = when {
-        role == RangeRole.Interior -> colors.onSecondaryContainer
+        role == RangeRole.Interior -> colors.onTertiaryContainer
         message.isOutgoing -> colors.onPrimaryContainer
         else -> colors.onSurfaceVariant
     }
@@ -96,10 +78,15 @@ internal fun ConversationMessageBubble(
         RangeRole.End -> endAccent
         else -> null
     }
+    val showStrip = range?.isComplete == true && role != RangeRole.None
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (showStrip) Modifier.background(colors.secondaryContainer.copy(alpha = 0.45f))
+                else Modifier,
+            )
             .semantics { contentDescription = directionLabel },
         contentAlignment = alignment,
     ) {
