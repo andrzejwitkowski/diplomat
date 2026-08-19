@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -82,6 +83,7 @@ fun DashboardRoute(
     viewModel: DashboardViewModel,
     otaUpdateViewModel: OtaUpdateViewModel,
     onOpenWhitelist: () -> Unit,
+    onOpenLlmSettings: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
     onSmsPermissionGranted: () -> Unit = {},
 ) {
@@ -173,6 +175,7 @@ fun DashboardRoute(
                     requestReadSms.launch(Manifest.permission.READ_SMS)
                 },
                 onOpenWhitelist = onOpenWhitelist,
+                onOpenLlmSettings = onOpenLlmSettings,
                 onThreadClick = { thread ->
                     viewModel.onThreadClick(thread)
                     onThreadClick(thread)
@@ -202,6 +205,7 @@ fun DashboardScreen(
     onRequestBatteryOptimization: () -> Unit,
     onRequestReadSms: () -> Unit,
     onOpenWhitelist: () -> Unit,
+    onOpenLlmSettings: () -> Unit,
     onThreadClick: (ConversationThread) -> Unit,
     onCopyDebugLogs: () -> Unit,
     modifier: Modifier = Modifier,
@@ -212,6 +216,12 @@ fun DashboardScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.dashboard_title)) },
                 actions = {
+                    IconButton(onClick = onOpenLlmSettings) {
+                        Icon(
+                            Icons.Default.SmartToy,
+                            contentDescription = stringResource(R.string.open_llm_settings),
+                        )
+                    }
                     IconButton(onClick = onOpenWhitelist) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.open_whitelist))
                     }

@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import pl.diplomat.infrastructure.DiplomatServiceLocator
+import pl.diplomat.infrastructure.adapter.OpenAiCompatibleLlmAdapter
 import pl.diplomat.infrastructure.appinfo.AppBuildInfo
 import pl.diplomat.infrastructure.notification.IncomingMessageNotifier
 import pl.diplomat.infrastructure.notification.NotificationParser
@@ -16,6 +17,8 @@ import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
 import pl.diplomat.infrastructure.debug.DevLog
 import pl.diplomat.infrastructure.dashboard.DashboardViewModel
+import pl.diplomat.infrastructure.llm.LlmSettingsViewModel
+import pl.diplomat.infrastructure.llm.SharedPrefsLlmSettingsStore
 import pl.diplomat.infrastructure.ota.OtaUpdateManager
 import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
 import pl.diplomat.infrastructure.sms.SmsInboxObserver
@@ -38,6 +41,7 @@ import pl.diplomat.infrastructure.conversation.InMemoryConversationRangeStore
 import pl.diplomat.usecase.MarkConversationAsReadUseCase
 import pl.diplomat.usecase.ObserveContactMessagesUseCase
 import pl.diplomat.usecase.ObserveConversationRangeUseCase
+import pl.diplomat.usecase.SendConversationToModelUseCase
 import pl.diplomat.usecase.UpdateConversationRangeUseCase
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetActiveConversationsUseCase
@@ -76,6 +80,12 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         private set
 
     lateinit var whitelistViewModel: WhitelistViewModel
+        private set
+
+    lateinit var llmSettingsViewModel: LlmSettingsViewModel
+        private set
+
+    lateinit var sendConversationToModel: SendConversationToModelUseCase
         private set
 
     lateinit var conversationDetailViewModelFactory: (WhitelistedContact) -> ConversationDetailViewModel
@@ -162,6 +172,13 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             systemContacts = systemContacts,
             avatarStorage = avatarStorage,
             onWhitelistChanged = smsInboxObserver::resyncToday,
+        )
+
+        val llmSettingsStore = SharedPrefsLlmSettingsStore(this)
+        llmSettingsViewModel = LlmSettingsViewModel(llmSettingsStore)
+        sendConversationToModel = SendConversationToModelUseCase(
+            settingsPort = llmSettingsStore,
+            completionPort = OpenAiCompatibleLlmAdapter(),
         )
     }
 

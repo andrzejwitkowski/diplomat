@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         dashboardViewModel = application.dashboardViewModel,
                         otaUpdateViewModel = application.otaUpdateViewModel,
                         whitelistViewModel = application.whitelistViewModel,
+                        llmSettingsViewModel = application.llmSettingsViewModel,
                         conversationDetailViewModelFactory = application.conversationDetailViewModelFactory,
                         onSmsPermissionGranted = application::startSmsInboxObserver,
                     )
