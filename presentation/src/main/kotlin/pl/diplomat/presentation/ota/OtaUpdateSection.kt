@@ -73,6 +73,12 @@ fun OtaUpdateSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(
+                onClick = { viewModel.updateLatest() },
+                enabled = !downloading,
+            ) {
+                Text(stringResource(R.string.ota_update_latest))
+            }
+            TextButton(
                 onClick = { viewModel.startUpdate(url) },
                 enabled = !downloading && url.isNotBlank(),
             ) {
@@ -92,6 +98,7 @@ fun OtaUpdateSection(
         }
         when (val current = state) {
             OtaUiState.Idle -> Unit
+            OtaUiState.LoadingLatest -> OtaLoadingLatest()
             is OtaUiState.Downloading -> OtaDownloadProgress(current.percent)
             is OtaUiState.NeedInstallPermission -> Text(
                 text = stringResource(R.string.ota_need_permission),
@@ -135,4 +142,17 @@ private fun OtaDownloadProgress(percent: Int?) {
             style = MaterialTheme.typography.labelSmall,
         )
     }
+}
+
+@Composable
+private fun OtaLoadingLatest() {
+    LinearProgressIndicator(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+    )
+    Text(
+        text = stringResource(R.string.ota_loading_latest),
+        style = MaterialTheme.typography.labelSmall,
+    )
 }

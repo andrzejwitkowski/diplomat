@@ -1,5 +1,6 @@
 package pl.diplomat.infrastructure.ota
 
+import pl.diplomat.domain.port.LatestReleaseUrlResolver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import java.io.File
 sealed interface OtaUiState {
     data object Idle : OtaUiState
     data class Downloading(val percent: Int?) : OtaUiState
+    data object LoadingLatest : OtaUiState
     data class NeedInstallPermission(val apkPath: String) : OtaUiState
     data object Installing : OtaUiState
     data class Error(val message: String) : OtaUiState
@@ -18,10 +20,27 @@ sealed interface OtaUiState {
 
 class OtaUpdateViewModel(
     private val otaUpdateManager: OtaUpdateManager,
+    private val latestUrlResolver: LatestReleaseUrlResolver? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OtaUiState>(OtaUiState.Idle)
     val uiState: StateFlow<OtaUiState> = _uiState.asStateFlow()
+
+    fun updateLatest() {
+        val resolver = latestUrlResolver
+        if (resolver == null) {
+            _uiState.value = OtaUiState.Error("No latest resolver configured")
+            return
+        }
+        _uiState.value = OtaUiState.LoadingLatest
+        viewModelScope.launch {
+            val resolvedUrl = resolver.resolveLatestUrl().getOrElse {
+                _uiState.value = OtaUiState.Error("Cannot resolve latest URL: ${it.message}")
+                return@launch
+            }
+            startUpdate(resolvedUrl)
+        }
+    }
 
     fun startUpdate(url: String) {
         if (url.isBlank()) {
