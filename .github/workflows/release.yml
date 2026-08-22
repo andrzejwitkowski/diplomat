@@ -116,3 +116,13 @@ jobs:
           generate_release_notes: true
           files: |
             app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Create or update latest tag
+        if: steps.tag_check.outputs.skip != 'true'
+        run: |
+          git config user.email "actions.github@email.com"
+          git config user.name "GitHub Actions"
+          # Update the `latest` tag to point at the current HEAD so that
+          # GET /releases/latest resolves the artifact we just published.
+          git tag -f latest
+          git push -f origin latest

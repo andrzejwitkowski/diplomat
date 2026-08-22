@@ -70,6 +70,8 @@
     <string name="ota_continue_install">Continue</string>
     <string name="ota_open_install_settings">Allow installs</string>
     <string name="ota_installing">Opening installer…</string>
+    <string name="ota_update_latest">Update latest</string>
+    <string name="ota_loading_latest">Resolving latest release…</string>
     <string name="llm_settings_title">AI Model Settings</string>
     <string name="llm_settings_base_url">Base URL</string>
     <string name="llm_settings_api_key">API key</string>

@@ -12,6 +12,7 @@ import pl.diplomat.infrastructure.notification.IncomingMessageNotifier
 import pl.diplomat.infrastructure.notification.NotificationParser
 import pl.diplomat.infrastructure.notification.VisualPlaceholderCatalog
 import pl.diplomat.infrastructure.adapter.AndroidSystemContactsAdapter
+import pl.diplomat.infrastructure.adapter.GithubLatestUrlResolver
 import pl.diplomat.infrastructure.adapter.LocalAvatarStorageAdapter
 import pl.diplomat.infrastructure.adapter.RoomContactRepositoryAdapter
 import pl.diplomat.infrastructure.adapter.RoomMessageRepositoryAdapter
@@ -152,7 +153,13 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             buildInfo = buildInfo,
         )
 
-        otaUpdateViewModel = OtaUpdateViewModel(OtaUpdateManager(this))
+        otaUpdateViewModel = OtaUpdateViewModel(
+            OtaUpdateManager(this),
+            GithubLatestUrlResolver(
+                owner = "andrzejwitkowski",
+                repo = "diplomat",
+            ),
+        )
 
         conversationDetailViewModelFactory = { contact ->
             ConversationDetailViewModel(
