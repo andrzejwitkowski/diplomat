@@ -21,6 +21,7 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
     private companion object {
         const val CONNECT_TIMEOUT_MS = 30_000
         const val READ_TIMEOUT_MS = 60_000
+        const val BEARER_PREFIX = "Bearer "
     }
 
     override suspend fun complete(
@@ -33,7 +34,7 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
             readTimeout = READ_TIMEOUT_MS
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Authorization", "Bearer ${settings.apiKey}")
+            setRequestProperty("Authorization", BEARER_PREFIX + settings.apiKey)
         }
         try {
             connection.outputStream.use { output ->

@@ -38,15 +38,14 @@ class GithubLatestUrlResolver(
     /** Fetches and parses the asset list from the GitHub releases/latest endpoint. */
     private fun fetchAssets(): List<Pair<String, String>> {
         val connection = (
-            URL("https://api.github.com/repos/$owner/$repo/releases/latest")
-                .openConnection() as HttpURLConnection
+            URL("$RELEASES_BASE/$owner/$repo/releases/latest").openConnection() as HttpURLConnection
             ).apply {
                 requestMethod = "GET"
-                connectTimeout = 30_000
-                readTimeout = 60_000
-                setRequestProperty("Accept", "application/vnd.github+json")
-                setRequestProperty("User-Agent", "Diplomat")
-                setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+                setRequestProperty("Accept", ACCEPT_HEADER)
+                setRequestProperty("User-Agent", USER_AGENT)
+                setRequestProperty("X-GitHub-Api-Version", API_VERSION)
             }
         try {
             val code = connection.responseCode
@@ -66,5 +65,14 @@ class GithubLatestUrlResolver(
             val asset = JSONObject(assets.getString(i))
             asset.optString("name") to asset.optString("browser_download_url")
         }
+    }
+
+    private companion object {
+        const val RELEASES_BASE = "https://api.github.com/repos"
+        const val ACCEPT_HEADER = "application/vnd.github+json"
+        const val USER_AGENT = "Diplomat"
+        const val API_VERSION = "2022-11-28"
+        const val CONNECT_TIMEOUT_MS = 30_000
+        const val READ_TIMEOUT_MS = 60_000
     }
 }

@@ -60,6 +60,12 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
     override val applicationScope: CoroutineScope
         get() = appScope
 
+    // Configurable via system properties so the repository is not hardcoded in source.
+    private val githubRepoOwner: String =
+        System.getProperty("diplomat.github.owner") ?: "andrzejwitkowski"
+    private val githubRepoName: String =
+        System.getProperty("diplomat.github.repo") ?: "diplomat"
+
     override lateinit var notificationParser: NotificationParser
         private set
 
@@ -156,8 +162,8 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         otaUpdateViewModel = OtaUpdateViewModel(
             OtaUpdateManager(this),
             GithubLatestUrlResolver(
-                owner = "andrzejwitkowski",
-                repo = "diplomat",
+                owner = githubRepoOwner,
+                repo = githubRepoName,
             ),
         )
 
