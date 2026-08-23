@@ -3,14 +3,19 @@ package pl.diplomat.infrastructure.conversation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import pl.diplomat.domain.model.ChannelMessageGroup
+import pl.diplomat.domain.model.ChatMessage
 import pl.diplomat.domain.model.ConversationRange
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.Sentiment
 import pl.diplomat.domain.model.WhitelistedContact
+import pl.diplomat.domain.model.toChatMessages
+import pl.diplomat.domain.port.LlmCompletionResult
 import pl.diplomat.usecase.ApplyRangeMarkResult
 import pl.diplomat.usecase.MarkConversationAsReadUseCase
 import pl.diplomat.usecase.ObserveContactMessagesUseCase
 import pl.diplomat.usecase.ObserveConversationRangeUseCase
 import pl.diplomat.usecase.RangeMarkAction
+import pl.diplomat.usecase.SendConversationToModelUseCase
 import pl.diplomat.usecase.UpdateConversationRangeUseCase
 import pl.diplomat.usecase.groupMessagesByChannel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,6 +26,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 enum class MarkMode {
     Idle,
@@ -38,6 +46,11 @@ sealed interface ConversationDetailUiState {
     ) : ConversationDetailUiState
 }
 
+sealed interface SuggestionOutcome {
+    data class Success(val text: String) : SuggestionOutcome
+    data class Failure(val message: String) : SuggestionOutcome
+}
+
 sealed interface ConversationDetailEvent {
     data object WrongChannel : ConversationDetailEvent
 }
@@ -48,11 +61,20 @@ class ConversationDetailViewModel(
     private val markConversationAsRead: MarkConversationAsReadUseCase,
     observeConversationRange: ObserveConversationRangeUseCase,
     private val updateConversationRange: UpdateConversationRangeUseCase,
+    private val sendConversationToModel: SendConversationToModelUseCase,
 ) : ViewModel() {
 
     private val markMode = MutableStateFlow(MarkMode.Idle)
     private var continueToEndAfterStart = true
     private val _events = MutableSharedFlow<ConversationDetailEvent>(extraBufferCapacity = 1)
+
+    val sentiment = MutableStateFlow(Sentiment.POSITIVE)
+    var desiredAnswer by mutableStateOf("")
+        private set
+    var isSubmitting by mutableStateOf(false)
+        private set
+    var lastOutcome by mutableStateOf<SuggestionOutcome>(SuggestionOutcome.Success(""))
+        private set
     val events = _events.asSharedFlow()
 
     val uiState: StateFlow<ConversationDetailUiState> =
@@ -153,5 +175,48 @@ class ConversationDetailViewModel(
                 }
             }
         }
+    }
+
+    fun selectSentiment(sentiment: Sentiment) {
+        this.sentiment.value = sentiment
+    }
+
+    fun updateDesiredAnswer(text: String) {
+        desiredAnswer = text
+    }
+
+    fun submitSuggestion() {
+        if (isSubmitting) return
+        isSubmitting = true
+        viewModelScope.launch {
+            val result = runCatching {
+                sendConversationToModel(
+                    systemPrompt = SuggestAnswerPrompt.SYSTEM_PROMPT,
+                    sentiment = sentiment.value,
+                    desiredAnswer = if (desiredAnswer.isBlank()) null else desiredAnswer,
+                    conversation = gatherConversationMessages(),
+                )
+            }.getOrNull() ?: LlmCompletionResult.Failure("Request failed")
+
+            lastOutcome = when (result) {
+                is LlmCompletionResult.Success -> SuggestionOutcome.Success(result.text)
+                is LlmCompletionResult.Failure -> SuggestionOutcome.Failure(result.message)
+            }
+            isSubmitting = false
+        }
+    }
+
+    private fun gatherConversationMessages(): List<ChatMessage> {
+        val content = contentOrNull() ?: return emptyList()
+        val range = content.range
+        val all = content.channelGroups.flatMap { it.messages }
+        val startId = range?.startMessageId
+        val endId = range?.endMessageId
+        val scoped = if (startId != null && endId != null) {
+            all.filter { it.id in startId..endId }
+        } else {
+            all
+        }
+        return scoped.toChatMessages()
     }
 }

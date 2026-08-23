@@ -7,6 +7,7 @@ import org.junit.Test
 import pl.diplomat.domain.model.ChatMessage
 import pl.diplomat.domain.model.ChatRole
 import pl.diplomat.domain.model.LlmSettings
+import pl.diplomat.domain.model.Sentiment
 import pl.diplomat.domain.port.LlmCompletionPort
 import pl.diplomat.domain.port.LlmCompletionResult
 import pl.diplomat.domain.port.LlmSettingsPort
@@ -71,6 +72,49 @@ class SendConversationToModelUseCaseTest {
         val result = useCase("prompt", listOf(ChatMessage(ChatRole.USER, "hi")))
 
         assertEquals(LlmCompletionResult.Success("answer"), result)
+    }
+
+    @Test
+    fun `injects sentiment and desired answer between prompt and conversation`() = runTest {
+        settingsPort.saved = LlmSettings(apiKey = "key")
+
+        useCase(
+            systemPrompt = "Suggest an answer",
+            sentiment = Sentiment.NEGATIVE,
+            desiredAnswer = "Keep it friendly",
+            conversation = listOf(ChatMessage(ChatRole.USER, "hi")),
+        )
+
+        assertEquals(
+            listOf(
+                ChatMessage(ChatRole.SYSTEM, "Suggest an answer"),
+                ChatMessage(ChatRole.USER, "Feedback sentiment: Negative"),
+                ChatMessage(ChatRole.SYSTEM, "Desired answer based on the conversation and sentiment:\nKeep it friendly"),
+                ChatMessage(ChatRole.USER, "hi"),
+            ),
+            completionPort.lastMessages,
+        )
+    }
+
+    @Test
+    fun `omits desired answer message when blank`() = runTest {
+        settingsPort.saved = LlmSettings(apiKey = "key")
+
+        useCase(
+            systemPrompt = "Suggest",
+            sentiment = Sentiment.NEUTRAL,
+            desiredAnswer = "",
+            conversation = listOf(ChatMessage(ChatRole.USER, "hi")),
+        )
+
+        assertEquals(
+            listOf(
+                ChatMessage(ChatRole.SYSTEM, "Suggest"),
+                ChatMessage(ChatRole.USER, "Feedback sentiment: Neutral"),
+                ChatMessage(ChatRole.USER, "hi"),
+            ),
+            completionPort.lastMessages,
+        )
     }
 
     private class InMemorySettingsPort : LlmSettingsPort {
