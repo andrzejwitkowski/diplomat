@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.TextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
@@ -85,6 +84,7 @@ fun ConversationDetailRoute(
         }
 
         is ConversationDetailUiState.Content -> {
+            val sentimentState by viewModel.sentiment.collectAsStateWithLifecycle()
             ConversationDetailScreen(
                 contactName = state.contact.displayName,
                 channelGroups = state.channelGroups,
@@ -102,7 +102,7 @@ fun ConversationDetailRoute(
                 onSentimentSelect = viewModel::selectSentiment,
                 onDesiredAnswerChange = viewModel::updateDesiredAnswer,
                 onSubmitSuggestion = viewModel::submitSuggestion,
-                sentiment = viewModel.sentiment.value,
+                sentiment = sentimentState,
                 desiredAnswer = viewModel.desiredAnswer,
                 isSubmitting = viewModel.isSubmitting,
                 lastOutcome = viewModel.lastOutcome,
@@ -335,7 +335,7 @@ private fun SuggestionComposer(
 
         if (lastOutcome is SuggestionOutcome.Failure) {
             Text(
-                text = stringResource(R.string.suggestion_failed),
+                text = stringResource(R.string.suggestion_failed, lastOutcome.message),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.error,
                 modifier = Modifier.padding(top = 4.dp),

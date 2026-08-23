@@ -20,9 +20,9 @@ class SendConversationToModelUseCase(
 ) {
     suspend operator fun invoke(
         systemPrompt: String,
+        conversation: List<ChatMessage>,
         sentiment: Sentiment? = null,
         desiredAnswer: String? = null,
-        conversation: List<ChatMessage>,
     ): LlmCompletionResult {
         val settings = settingsPort.load()
         if (settings.apiKey.isBlank()) {
@@ -31,7 +31,9 @@ class SendConversationToModelUseCase(
         val messages = buildList {
             add(ChatMessage(ChatRole.SYSTEM, systemPrompt))
             sentiment?.let { add(ChatMessage(ChatRole.USER, "Feedback sentiment: ${it.label}")) }
-            desiredAnswer?.let { add(ChatMessage(ChatRole.SYSTEM, "Desired answer based on the conversation and sentiment:\n$it")) }
+            desiredAnswer
+                ?.takeIf { it.isNotBlank() }
+                ?.let { add(ChatMessage(ChatRole.SYSTEM, "Desired answer based on the conversation and sentiment:\n$it")) }
             addAll(conversation)
         }
         return completionPort.complete(settings, messages)

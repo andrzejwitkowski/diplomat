@@ -1,0 +1,29 @@
+---
+description: Use CodeGraph as the primary source for code understanding — prefer its queries over Read/Grep
+alwaysApply: true
+---
+
+# CodeGraph as primary code source
+
+When searching code — finding how things work, tracing flows, understanding dependencies, or locating symbols — **use CodeGraph's `codegraph_explore` tool as the main source of truth** before falling back to Read or Grep.
+
+## Rule
+
+1. **Always query `codegraph_explore` first** for structural questions ("how does X reach Y", "where is X defined", "what calls X", "trace the flow"). The graph contains pre-indexed symbols, call paths, and dependencies.
+
+2. **Treat explore results as already-read source.** When `codegraph_explore` returns verbatim source, do not Read the file again — the codegraph response already gives you line-numbered code.
+
+3. **Only fall back to Read/Grep** when codegraph returns `isError: true` (a genuine stop signal) or when you need to inspect content that codegraph cannot surface (e.g., runtime state, external config files outside the repo).
+
+4. **Trust the staleness banner** — if codegraph prepends `⚠️` to a response, it means a file has been edited since the last sync. Read the file directly for live content.
+
+## Quick reference
+
+- **Explore a flow:** `codegraph_explore <query>` — returns source + call paths + blast radius
+- **Get one symbol:** `codegraph_node <symbol>` — returns body + caller/callee trail
+- **Full-text search:** `codegraph_search <terms>` — FTS5 across the codebase
+- **Find callers:** `codegraph_callers <symbol>` — what calls this function/class
+- **Find callees:** `codegraph_callees <symbol>` — what this calls
+- **Impact analysis:** `codegraph_impact <symbol>` — what changes if this is modified
+- **File listing:** `codegraph_files [path]` — show file structure from the graph
+- **Status:** `codegraph_status` — show graph health
