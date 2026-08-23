@@ -174,6 +174,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
                 markConversationAsRead = markConversationAsRead,
                 observeConversationRange = observeConversationRange,
                 updateConversationRange = updateConversationRange,
+                sendConversationToModel = sendConversationToModel,
             )
         }
 

@@ -4,10 +4,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextField
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -15,9 +22,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -39,10 +48,12 @@ import pl.diplomat.domain.model.ConversationRange
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
 import pl.diplomat.domain.model.MessageSourceApp
+import pl.diplomat.domain.model.Sentiment
 import pl.diplomat.infrastructure.conversation.ConversationDetailEvent
 import pl.diplomat.infrastructure.conversation.ConversationDetailUiState
 import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
 import pl.diplomat.infrastructure.conversation.MarkMode
+import pl.diplomat.infrastructure.conversation.SuggestionOutcome
 import pl.diplomat.presentation.R
 import kotlinx.coroutines.flow.collectLatest
 
@@ -73,6 +84,7 @@ fun ConversationDetailRoute(
         }
 
         is ConversationDetailUiState.Content -> {
+            val sentimentState by viewModel.sentiment.collectAsStateWithLifecycle()
             ConversationDetailScreen(
                 contactName = state.contact.displayName,
                 channelGroups = state.channelGroups,
@@ -87,6 +99,13 @@ fun ConversationDetailRoute(
                 onEditEnd = viewModel::editEnd,
                 onDeleteStart = viewModel::deleteStart,
                 onDeleteEnd = viewModel::deleteEnd,
+                onSentimentSelect = viewModel::selectSentiment,
+                onDesiredAnswerChange = viewModel::updateDesiredAnswer,
+                onSubmitSuggestion = viewModel::submitSuggestion,
+                sentiment = sentimentState,
+                desiredAnswer = viewModel.desiredAnswer,
+                isSubmitting = viewModel.isSubmitting,
+                lastOutcome = viewModel.lastOutcome,
             )
         }
     }
@@ -108,6 +127,13 @@ fun ConversationDetailScreen(
     onEditEnd: () -> Unit,
     onDeleteStart: () -> Unit,
     onDeleteEnd: () -> Unit,
+    onSentimentSelect: (pl.diplomat.domain.model.Sentiment) -> Unit,
+    onDesiredAnswerChange: (String) -> Unit,
+    onSubmitSuggestion: () -> Unit,
+    sentiment: pl.diplomat.domain.model.Sentiment,
+    desiredAnswer: String,
+    isSubmitting: Boolean,
+    lastOutcome: SuggestionOutcome,
 ) {
     val listState = rememberLazyListState()
     val itemCount = channelGroups.sumOf { 1 + it.messages.size }
@@ -213,22 +239,142 @@ fun ConversationDetailScreen(
                         )
                     }
                 }
+                item(key = "suggestion-composer") {
+                    SuggestionComposer(
+                        sentiment = sentiment,
+                    onSentimentSelect = onSentimentSelect,
+                    desiredAnswer = desiredAnswer,
+                    onDesiredAnswerChange = onDesiredAnswerChange,
+                    onSubmit = onSubmitSuggestion,
+                    isSubmitting = isSubmitting,
+                    lastOutcome = lastOutcome,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
-    Text(
-        text = when (sourceApp) {
-            MessageSourceApp.SMS -> stringResource(R.string.channel_sms)
-            MessageSourceApp.WHATSAPP -> stringResource(R.string.channel_whatsapp)
-        },
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+private fun SuggestionComposer(
+    sentiment: pl.diplomat.domain.model.Sentiment,
+    onSentimentSelect: (pl.diplomat.domain.model.Sentiment) -> Unit,
+    desiredAnswer: String,
+    onDesiredAnswerChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    isSubmitting: Boolean,
+    lastOutcome: SuggestionOutcome,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(vertical = 8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.suggestion_composer_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.primary,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.suggestion_sentiment_label),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            pl.diplomat.domain.model.Sentiment.values().forEach { option ->
+                val active = option == sentiment
+                IconButton(
+                    onClick = { onSentimentSelect(option) },
+                    modifier = Modifier
+                        .background(
+                            colors.secondaryContainer.copy(alpha = if (active) 0.5f else 0.1f),
+                            shape = MaterialTheme.shapes.small,
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = option.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = when (option) {
+                            Sentiment.POSITIVE -> colors.successOrPrimary(colors)
+                            Sentiment.NEUTRAL -> colors.onSurfaceVariant
+                            Sentiment.NEGATIVE -> colors.error
+                        },
+                    )
+                }
+            }
+        }
+
+        TextField(
+            value = desiredAnswer,
+            onValueChange = onDesiredAnswerChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            label = { Text(stringResource(R.string.suggestion_desired_answer)) },
+            minLines = 3,
+        )
+
+        Button(
+            onClick = onSubmit,
+            enabled = !isSubmitting,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = if (isSubmitting) stringResource(R.string.suggestion_submitting)
+                else stringResource(R.string.suggestion_submit),
+            )
+        }
+
+        if (lastOutcome is SuggestionOutcome.Failure) {
+            Text(
+                text = stringResource(R.string.suggestion_failed, lastOutcome.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.error,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        } else if (lastOutcome is SuggestionOutcome.Success && lastOutcome.text.isNotBlank()) {
+            Text(
+                text = stringResource(R.string.suggestion_result),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            OutlinedTextField(
+                value = lastOutcome.text,
+                onValueChange = {},
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(bottom = 4.dp),
     )
 }
+
+@Composable
+private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
+    SectionHeader(
+        label = when (sourceApp) {
+            MessageSourceApp.SMS -> "SMS"
+            MessageSourceApp.WHATSAPP -> "WhatsApp"
+        }
+    )
+}
+
+private fun ColorScheme.successOrPrimary(base: ColorScheme) = base.primary

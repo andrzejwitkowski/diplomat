@@ -16,3 +16,7 @@ Read and follow the project skills under `.cursor/skills/` (authoritative).
 Ponytail does **not** own the finish-gate review — that is deslop then thermo-nuclear.
 
 If they conflict: **ponytail** wins on whether to add a thing; **thermo-nuclear** wins on restructuring something already being shipped; **deslop** wins on cosmetic AI noise.
+
+## CodeGraph as primary search source
+
+When searching code — finding how things work, tracing flows, understanding dependencies — prefer CodeGraph's `codegraph_explore` tool over Read/Grep. See [`.cursor/rules/codegraph.mdc`](codegraph.mdc) for details.
