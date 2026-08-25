@@ -1,5 +1,6 @@
 package pl.diplomat.infrastructure.adapter
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -28,6 +29,7 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
         settings: LlmSettings,
         messages: List<ChatMessage>,
     ): LlmCompletionResult = withContext(Dispatchers.IO) {
+        Log.d("LlmAdapter", "Attempting to complete request with settings: $settings and ${messages.size} messages")
         val connection = (URL(endpoint(settings.baseUrl)).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = CONNECT_TIMEOUT_MS
@@ -38,18 +40,30 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
         }
         try {
             connection.outputStream.use { output ->
-                output.write(buildRequestBody(settings.model, messages).toByteArray(Charsets.UTF_8))
+                val requestBody = buildRequestBody(settings.model, messages)
+                Log.d("LlmAdapter", "Sending request body: $requestBody")
+                output.write(requestBody.toByteArray(Charsets.UTF_8))
             }
             val code = connection.responseCode
             val responseBody = readBody(connection, code)
+            Log.d("LlmAdapter", "Received response code: $code, body preview: ${responseBody.take(200)}")
             if (code !in 200..299) {
-                LlmCompletionResult.Failure("HTTP $code: ${extractErrorMessage(responseBody)}")
+                val errorMessage = extractErrorMessage(responseBody)
+                Log.e("LlmAdapter", "HTTP error $code: $errorMessage")
+                LlmCompletionResult.Failure("HTTP $code: $errorMessage")
             } else {
                 parseAssistantText(responseBody)
-                    ?.let { LlmCompletionResult.Success(it) }
-                    ?: LlmCompletionResult.Failure("Unexpected response: ${responseBody.take(200)}")
+                    ?.let { 
+                        Log.d("LlmAdapter", "Successfully parsed assistant text")
+                        LlmCompletionResult.Success(it) 
+                    }
+                    ?: run {
+                        Log.e("LlmAdapter", "Failed to parse assistant text from response")
+                        LlmCompletionResult.Failure("Unexpected response: ${responseBody.take(200)}")
+                    }
             }
         } catch (error: Throwable) {
+            Log.e("LlmAdapter", "Request failed with exception", error)
             LlmCompletionResult.Failure(error.message ?: "Request failed")
         } finally {
             connection.disconnect()
