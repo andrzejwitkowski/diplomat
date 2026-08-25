@@ -1,6 +1,5 @@
 package pl.diplomat.infrastructure.adapter
 
-import android.util.Log
 import org.json.JSONObject
 import pl.diplomat.domain.port.LatestReleaseUrlResolver
 import java.net.HttpURLConnection

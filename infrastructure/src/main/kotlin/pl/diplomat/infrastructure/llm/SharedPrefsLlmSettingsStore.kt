@@ -1,7 +1,6 @@
 package pl.diplomat.infrastructure.llm
 
 import android.content.Context
-import android.util.Log
 import pl.diplomat.domain.model.LlmSettings
 import pl.diplomat.domain.port.LlmSettingsPort
 

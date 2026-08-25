@@ -1,6 +1,5 @@
 package pl.diplomat.infrastructure.ota
 
-import android.util.Log
 import pl.diplomat.domain.port.LatestReleaseUrlResolver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

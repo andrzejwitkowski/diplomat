@@ -1,6 +1,5 @@
 package pl.diplomat.usecase
 
-import android.util.Log
 import pl.diplomat.domain.model.ChatMessage
 import pl.diplomat.domain.model.ChatRole
 import pl.diplomat.domain.model.LlmSettings
