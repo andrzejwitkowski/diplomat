@@ -1,7 +1,9 @@
 package pl.diplomat.infrastructure.notification
 
 import android.app.Person
+import android.os.Build
 import android.os.Bundle
+import androidx.annotation.RequiresApi
 import androidx.core.os.BundleCompat
 import pl.diplomat.domain.model.MessageContent
 import pl.diplomat.domain.model.MessageSourceApp
@@ -329,12 +331,16 @@ class NotificationParser(
         ) {
             return true
         }
-        if (senderPerson != null && messagingUser != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            senderPerson != null &&
+            messagingUser != null
+        ) {
             return personsRepresentSameUser(senderPerson, messagingUser)
         }
         return false
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun personsRepresentSameUser(left: Person, right: Person): Boolean {
         val leftUri = left.uri?.toString()?.trim()?.lowercase()
         val rightUri = right.uri?.toString()?.trim()?.lowercase()
@@ -344,13 +350,18 @@ class NotificationParser(
         return !leftName.isNullOrBlank() && leftName == rightName
     }
 
-    private fun extractMessagingUser(extras: Bundle): Person? =
-        BundleCompat.getParcelable(extras, "android.messagingUser", Person::class.java)
+    private fun extractMessagingUser(extras: Bundle): Person? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
+        return BundleCompat.getParcelable(extras, "android.messagingUser", Person::class.java)
+    }
 
-    private fun extractSenderPerson(bundle: Bundle): Person? =
-        BundleCompat.getParcelable(bundle, "sender_person", Person::class.java)
+    private fun extractSenderPerson(bundle: Bundle): Person? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
+        return BundleCompat.getParcelable(bundle, "sender_person", Person::class.java)
+    }
 
     private fun extractSenderPersonCandidates(bundle: Bundle): List<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return emptyList()
         val person = BundleCompat.getParcelable(bundle, "sender_person", Person::class.java) ?: return emptyList()
         val candidates = mutableListOf<String>()
         person.uri?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let { uri ->
