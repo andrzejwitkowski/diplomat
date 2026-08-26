@@ -2,7 +2,6 @@ package pl.diplomat.usecase
 
 import pl.diplomat.domain.model.ChatMessage
 import pl.diplomat.domain.model.ChatRole
-import pl.diplomat.domain.model.LlmSettings
 import pl.diplomat.domain.model.Sentiment
 import pl.diplomat.domain.port.LlmCompletionPort
 import pl.diplomat.domain.port.LlmCompletionResult
@@ -24,31 +23,22 @@ class SendConversationToModelUseCase(
         sentiment: Sentiment? = null,
         desiredAnswer: String? = null,
     ): LlmCompletionResult {
-        Log.d("SendConversationUseCase", "Invoked with systemPrompt: $systemPrompt, conversation size: ${conversation.size}")
         val settings = settingsPort.load()
-        Log.d("SendConversationUseCase", "Loaded LLM settings: $settings")
         if (settings.apiKey.isBlank()) {
-            Log.e("SendConversationUseCase", "API key is not configured")
             return LlmCompletionResult.Failure("API key is not configured")
         }
         val messages = buildList {
             add(ChatMessage(ChatRole.SYSTEM, systemPrompt))
-            sentiment?.let { 
-                val sentimentMessage = ChatMessage(ChatRole.USER, "Feedback sentiment: ${it.label}")
-                add(sentimentMessage)
-                Log.d("SendConversationUseCase", "Added sentiment message: $sentimentMessage")
+            sentiment?.let {
+                add(ChatMessage(ChatRole.USER, "Feedback sentiment: ${it.label}"))
             }
             desiredAnswer
                 ?.takeIf { it.isNotBlank() }
-                ?.let { 
-                    val desiredAnswerMessage = ChatMessage(ChatRole.SYSTEM, "Desired answer based on the conversation and sentiment:\n$it")
-                    add(desiredAnswerMessage)
-                    Log.d("SendConversationUseCase", "Added desired answer message: $desiredAnswerMessage")
+                ?.let {
+                    add(ChatMessage(ChatRole.SYSTEM, "Desired answer based on the conversation and sentiment:\n$it"))
                 }
             addAll(conversation)
-            Log.d("SendConversationUseCase", "Final message list built with ${size} messages")
         }
-        Log.d("SendConversationUseCase", "Calling completion port with ${messages.size} messages")
         return completionPort.complete(settings, messages)
     }
 }
