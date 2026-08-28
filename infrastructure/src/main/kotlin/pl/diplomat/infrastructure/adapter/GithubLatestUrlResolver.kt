@@ -1,5 +1,7 @@
 package pl.diplomat.infrastructure.adapter
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import pl.diplomat.domain.port.LatestReleaseUrlResolver
 import java.net.HttpURLConnection
@@ -19,8 +21,8 @@ class GithubLatestUrlResolver(
     private val repo: String,
 ) : LatestReleaseUrlResolver {
 
-    override fun resolveLatestUrl(): Result<String> = runCatching {
-        parseStaticDownloadUrl(fetchAssets())
+    override suspend fun resolveLatestUrl(): Result<String> = withContext(Dispatchers.IO) {
+        runCatching { parseStaticDownloadUrl(fetchAssets()) }
     }
 
     /**
@@ -62,7 +64,7 @@ class GithubLatestUrlResolver(
         val release = JSONObject(releaseBody)
         val assets = release.getJSONArray("assets")
         return (0 until assets.length()).map { i ->
-            val asset = JSONObject(assets.getString(i))
+            val asset = assets.getJSONObject(i)
             asset.optString("name") to asset.optString("browser_download_url")
         }
     }

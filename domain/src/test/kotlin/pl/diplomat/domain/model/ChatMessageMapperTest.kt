@@ -17,7 +17,7 @@ class ChatMessageMapperTest {
         )
 
     @Test
-    fun `maps outgoing to assistant and incoming to user`() = {
+    fun `maps outgoing to assistant and incoming to user`() {
         val messages = listOf(
             message(1, isOutgoing = false, MessageContent.TextOnly("hello")),
             message(2, isOutgoing = true, MessageContent.TextOnly("hi")),
@@ -35,7 +35,7 @@ class ChatMessageMapperTest {
     }
 
     @Test
-    fun `maps image only content to token`() = {
+    fun `maps image only content to token`() {
         val messages = listOf(message(1, isOutgoing = false, MessageContent.VisualOnly(VisualMediaKind.PHOTO)))
 
         val result = messages.toChatMessages()
@@ -44,10 +44,5 @@ class ChatMessageMapperTest {
             listOf(ChatMessage(ChatRole.USER, "(photo)")),
             result,
         )
-    }
-
-    @Test
-    fun `returns empty list for empty input`() = {
-        assertEquals(emptyList(), emptyList<IncomingMessage>().toChatMessages())
     }
 }

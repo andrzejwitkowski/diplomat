@@ -56,8 +56,11 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
         }
     }
 
-    private fun endpoint(baseUrl: String): String =
-        "${baseUrl.trimEnd('/')}/chat/completions"
+    internal fun endpoint(baseUrl: String): String {
+        val trimmed = baseUrl.trim().trimEnd('/')
+        return if (trimmed.endsWith("/chat/completions")) trimmed
+        else "$trimmed/chat/completions"
+    }
 
     private fun buildRequestBody(model: String, messages: List<ChatMessage>): String {
         val jsonMessages = JSONArray()

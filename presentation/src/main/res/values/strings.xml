@@ -76,7 +76,7 @@
     <string name="llm_settings_base_url">Base URL</string>
     <string name="llm_settings_api_key">API key</string>
     <string name="llm_settings_model">Model</string>
-    <string name="llm_settings_hint">Any OpenAI-compatible chat completions endpoint.</string>
+    <string name="llm_settings_hint">API root like https://openrouter.ai/api/v1, or the full /chat/completions URL.</string>
     <string name="llm_settings_save">Save</string>
     <string name="open_llm_settings">AI model settings</string>
     <string name="suggestion_composer_title">Suggest answer</string>
@@ -86,7 +86,4 @@
     <string name="suggestion_submitting">Sending…</string>
     <string name="suggestion_failed">Request failed: %1$s</string>
     <string name="suggestion_result">Suggested answer</string>
-    <string name="suggestion_positive">Positive</string>
-    <string name="suggestion_neutral">Neutral</string>
-    <string name="suggestion_negative">Negative</string>
 </resources>

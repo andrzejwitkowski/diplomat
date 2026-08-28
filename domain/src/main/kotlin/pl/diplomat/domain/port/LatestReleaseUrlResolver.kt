@@ -10,5 +10,5 @@ interface LatestReleaseUrlResolver {
      * @return the static download URL of the latest release asset, or a [Failure] when
      * the URL cannot be resolved (network error, HTTP error, or no assets).
      */
-    fun resolveLatestUrl(): Result<String>
+    suspend fun resolveLatestUrl(): Result<String>
 }

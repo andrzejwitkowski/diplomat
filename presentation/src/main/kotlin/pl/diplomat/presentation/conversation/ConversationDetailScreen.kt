@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextField
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -127,10 +125,10 @@ fun ConversationDetailScreen(
     onEditEnd: () -> Unit,
     onDeleteStart: () -> Unit,
     onDeleteEnd: () -> Unit,
-    onSentimentSelect: (pl.diplomat.domain.model.Sentiment) -> Unit,
+    onSentimentSelect: (Sentiment) -> Unit,
     onDesiredAnswerChange: (String) -> Unit,
     onSubmitSuggestion: () -> Unit,
-    sentiment: pl.diplomat.domain.model.Sentiment,
+    sentiment: Sentiment,
     desiredAnswer: String,
     isSubmitting: Boolean,
     lastOutcome: SuggestionOutcome,
@@ -242,12 +240,12 @@ fun ConversationDetailScreen(
                 item(key = "suggestion-composer") {
                     SuggestionComposer(
                         sentiment = sentiment,
-                    onSentimentSelect = onSentimentSelect,
-                    desiredAnswer = desiredAnswer,
-                    onDesiredAnswerChange = onDesiredAnswerChange,
-                    onSubmit = onSubmitSuggestion,
-                    isSubmitting = isSubmitting,
-                    lastOutcome = lastOutcome,
+                        onSentimentSelect = onSentimentSelect,
+                        desiredAnswer = desiredAnswer,
+                        onDesiredAnswerChange = onDesiredAnswerChange,
+                        onSubmit = onSubmitSuggestion,
+                        isSubmitting = isSubmitting,
+                        lastOutcome = lastOutcome,
                     )
                 }
             }
@@ -257,8 +255,8 @@ fun ConversationDetailScreen(
 
 @Composable
 private fun SuggestionComposer(
-    sentiment: pl.diplomat.domain.model.Sentiment,
-    onSentimentSelect: (pl.diplomat.domain.model.Sentiment) -> Unit,
+    sentiment: Sentiment,
+    onSentimentSelect: (Sentiment) -> Unit,
     desiredAnswer: String,
     onDesiredAnswerChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -288,7 +286,7 @@ private fun SuggestionComposer(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
-            pl.diplomat.domain.model.Sentiment.values().forEach { option ->
+            Sentiment.entries.forEach { option ->
                 val active = option == sentiment
                 IconButton(
                     onClick = { onSentimentSelect(option) },
@@ -303,7 +301,7 @@ private fun SuggestionComposer(
                         text = option.label,
                         style = MaterialTheme.typography.labelMedium,
                         color = when (option) {
-                            Sentiment.POSITIVE -> colors.successOrPrimary(colors)
+                            Sentiment.POSITIVE -> colors.primary
                             Sentiment.NEUTRAL -> colors.onSurfaceVariant
                             Sentiment.NEGATIVE -> colors.error
                         },
@@ -315,9 +313,7 @@ private fun SuggestionComposer(
         TextField(
             value = desiredAnswer,
             onValueChange = onDesiredAnswerChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.suggestion_desired_answer)) },
             minLines = 3,
         )
@@ -358,23 +354,16 @@ private fun SuggestionComposer(
 }
 
 @Composable
-private fun SectionHeader(label: String) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 4.dp),
-    )
-}
-
-@Composable
 private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
-    SectionHeader(
-        label = when (sourceApp) {
-            MessageSourceApp.SMS -> "SMS"
-            MessageSourceApp.WHATSAPP -> "WhatsApp"
-        }
+    Text(
+        text = when (sourceApp) {
+            MessageSourceApp.SMS -> stringResource(R.string.channel_sms)
+            MessageSourceApp.WHATSAPP -> stringResource(R.string.channel_whatsapp)
+        },
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
     )
 }
-
-private fun ColorScheme.successOrPrimary(base: ColorScheme) = base.primary
