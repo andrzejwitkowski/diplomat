@@ -38,14 +38,12 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
         }
         try {
             connection.outputStream.use { output ->
-                val requestBody = buildRequestBody(settings.model, messages)
-                output.write(requestBody.toByteArray(Charsets.UTF_8))
+                output.write(buildRequestBody(settings.model, messages).toByteArray(Charsets.UTF_8))
             }
             val code = connection.responseCode
             val responseBody = readBody(connection, code)
             if (code !in 200..299) {
-                val errorMessage = extractErrorMessage(responseBody)
-                LlmCompletionResult.Failure("HTTP $code: $errorMessage")
+                LlmCompletionResult.Failure("HTTP $code: ${extractErrorMessage(responseBody)}")
             } else {
                 parseAssistantText(responseBody)
                     ?.let { LlmCompletionResult.Success(it) }
@@ -58,8 +56,11 @@ class OpenAiCompatibleLlmAdapter : LlmCompletionPort {
         }
     }
 
-    private fun endpoint(baseUrl: String): String =
-        "${baseUrl.trimEnd('/')}/chat/completions"
+    internal fun endpoint(baseUrl: String): String {
+        val trimmed = baseUrl.trim().trimEnd('/')
+        return if (trimmed.endsWith("/chat/completions")) trimmed
+        else "$trimmed/chat/completions"
+    }
 
     private fun buildRequestBody(model: String, messages: List<ChatMessage>): String {
         val jsonMessages = JSONArray()

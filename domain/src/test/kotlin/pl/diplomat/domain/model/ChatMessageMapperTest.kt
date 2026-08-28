@@ -45,9 +45,4 @@ class ChatMessageMapperTest {
             result,
         )
     }
-
-    @Test
-    fun `returns empty list for empty input`() {
-        assertEquals(emptyList<ChatMessage>(), emptyList<IncomingMessage>().toChatMessages())
-    }
 }

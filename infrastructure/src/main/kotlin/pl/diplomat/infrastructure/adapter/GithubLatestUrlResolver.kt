@@ -1,5 +1,7 @@
 package pl.diplomat.infrastructure.adapter
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import pl.diplomat.domain.port.LatestReleaseUrlResolver
 import java.net.HttpURLConnection
@@ -19,8 +21,8 @@ class GithubLatestUrlResolver(
     private val repo: String,
 ) : LatestReleaseUrlResolver {
 
-    override fun resolveLatestUrl(): Result<String> = runCatching {
-        parseStaticDownloadUrl(fetchAssets())
+    override suspend fun resolveLatestUrl(): Result<String> = withContext(Dispatchers.IO) {
+        runCatching { parseStaticDownloadUrl(fetchAssets()) }
     }
 
     /**
@@ -52,8 +54,7 @@ class GithubLatestUrlResolver(
             if (code != HttpURLConnection.HTTP_OK) {
                 error("GitHub API error: HTTP $code")
             }
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            return parseAssets(body)
+            return parseAssets(connection.inputStream.bufferedReader().use { it.readText() })
         } finally {
             connection.disconnect()
         }
@@ -62,13 +63,10 @@ class GithubLatestUrlResolver(
     private fun parseAssets(releaseBody: String): List<Pair<String, String>> {
         val release = JSONObject(releaseBody)
         val assets = release.getJSONArray("assets")
-        val assetList = (0 until assets.length()).map { i ->
-            val asset = JSONObject(assets.getString(i))
-            val name = asset.optString("name")
-            val url = asset.optString("browser_download_url")
-            name to url
+        return (0 until assets.length()).map { i ->
+            val asset = assets.getJSONObject(i)
+            asset.optString("name") to asset.optString("browser_download_url")
         }
-        return assetList
     }
 
     private companion object {

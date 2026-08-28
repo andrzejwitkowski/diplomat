@@ -191,7 +191,7 @@ class ConversationDetailViewModel(
         viewModelScope.launch {
             val result = runCatching {
                 sendConversationToModel(
-                    systemPrompt = SuggestAnswerPrompt.SYSTEM_PROMPT,
+                    systemPrompt = SUGGEST_ANSWER_SYSTEM_PROMPT,
                     sentiment = sentiment.value,
                     desiredAnswer = if (desiredAnswer.isBlank()) null else desiredAnswer,
                     conversation = gatherConversationMessages(),
@@ -218,5 +218,10 @@ class ConversationDetailViewModel(
             all
         }
         return scoped.toChatMessages()
+    }
+
+    private companion object {
+        const val SUGGEST_ANSWER_SYSTEM_PROMPT =
+            "Zaproponuj odpowiedz na konwersacie zgodnie z sentymentem"
     }
 }

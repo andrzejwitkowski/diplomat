@@ -10,8 +10,7 @@ import pl.diplomat.domain.port.LlmSettingsPort
 /**
  * Sends a fixed [systemPrompt] plus a volatile conversation (typically a selected
  * excerpt, later produced by the conversation service as role-tagged messages) to
- * an OpenAI-compatible chat completion API. Sentiment and an optional desired-answer
- * hint are injected as extra messages so the model can shape its suggestion.
+ * an OpenAI-compatible chat completion API.
  */
 class SendConversationToModelUseCase(
     private val settingsPort: LlmSettingsPort,
