@@ -81,6 +81,12 @@
     <string name="open_llm_settings">AI model settings</string>
     <string name="suggestion_composer_title">Suggest answer</string>
     <string name="suggestion_sentiment_label">Sentiment</string>
+    <string name="sentiment_positive">Good</string>
+    <string name="sentiment_neutral">OK</string>
+    <string name="sentiment_negative">Tough</string>
+    <string name="sentiment_positive_a11y">Positive sentiment</string>
+    <string name="sentiment_neutral_a11y">Neutral sentiment</string>
+    <string name="sentiment_negative_a11y">Negative sentiment</string>
     <string name="suggestion_desired_answer">Your desired answer</string>
     <string name="suggestion_submit">Suggest answer</string>
     <string name="suggestion_submitting">Sending…</string>
