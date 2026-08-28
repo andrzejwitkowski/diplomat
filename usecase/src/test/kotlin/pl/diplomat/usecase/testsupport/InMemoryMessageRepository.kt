@@ -2,6 +2,7 @@ package pl.diplomat.usecase.testsupport
 
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.port.MessageRepositoryPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,6 +68,12 @@ class InMemoryMessageRepository(
                     message
                 }
             }
+        }
+    }
+
+    override suspend fun deleteSmsForContact(contactId: Long) {
+        messages.update { current ->
+            current.filterNot { it.contactId == contactId && it.sourceApp == MessageSourceApp.SMS }
         }
     }
 

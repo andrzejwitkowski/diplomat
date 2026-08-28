@@ -92,6 +92,14 @@ abstract class IncomingMessageDao {
     @Query("UPDATE incoming_messages SET isRead = 1 WHERE contactId = :contactId AND isRead = 0 AND isOutgoing = 0")
     abstract suspend fun markAllAsReadForContact(contactId: Long)
 
+    @Query(
+        """
+        DELETE FROM incoming_messages
+        WHERE contactId = :contactId AND sourceApp = :sourceApp
+        """,
+    )
+    abstract suspend fun deleteByContactIdAndSourceApp(contactId: Long, sourceApp: String)
+
     companion object {
         const val DUPLICATE_ID = -1L
     }

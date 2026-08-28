@@ -10,11 +10,13 @@ import pl.diplomat.domain.model.Sentiment
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.domain.model.toChatMessages
 import pl.diplomat.domain.port.LlmCompletionResult
+import pl.diplomat.domain.port.SmsHistoryImportResult
 import pl.diplomat.usecase.ApplyRangeMarkResult
 import pl.diplomat.usecase.MarkConversationAsReadUseCase
 import pl.diplomat.usecase.ObserveContactMessagesUseCase
 import pl.diplomat.usecase.ObserveConversationRangeUseCase
 import pl.diplomat.usecase.RangeMarkAction
+import pl.diplomat.usecase.ReimportContactSmsHistoryUseCase
 import pl.diplomat.usecase.SendConversationToModelUseCase
 import pl.diplomat.usecase.UpdateConversationRangeUseCase
 import pl.diplomat.usecase.groupMessagesByChannel
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import java.time.LocalDate
 
 enum class MarkMode {
     Idle,
@@ -53,6 +56,8 @@ sealed interface SuggestionOutcome {
 
 sealed interface ConversationDetailEvent {
     data object WrongChannel : ConversationDetailEvent
+    data class ImportSuccess(val count: Int) : ConversationDetailEvent
+    data object ImportPermissionDenied : ConversationDetailEvent
 }
 
 class ConversationDetailViewModel(
@@ -62,6 +67,7 @@ class ConversationDetailViewModel(
     observeConversationRange: ObserveConversationRangeUseCase,
     private val updateConversationRange: UpdateConversationRangeUseCase,
     private val sendConversationToModel: SendConversationToModelUseCase,
+    private val reimportContactSmsHistory: ReimportContactSmsHistoryUseCase,
 ) : ViewModel() {
 
     private val markMode = MutableStateFlow(MarkMode.Idle)
@@ -72,6 +78,8 @@ class ConversationDetailViewModel(
     var desiredAnswer by mutableStateOf("")
         private set
     var isSubmitting by mutableStateOf(false)
+        private set
+    var isImporting by mutableStateOf(false)
         private set
     var lastOutcome by mutableStateOf<SuggestionOutcome>(SuggestionOutcome.Success(""))
         private set
@@ -183,6 +191,20 @@ class ConversationDetailViewModel(
 
     fun updateDesiredAnswer(text: String) {
         desiredAnswer = text
+    }
+
+    fun requestImport(sinceDate: LocalDate) {
+        if (isImporting) return
+        isImporting = true
+        viewModelScope.launch {
+            when (val result = reimportContactSmsHistory(contact, sinceDate)) {
+                is SmsHistoryImportResult.Success ->
+                    _events.emit(ConversationDetailEvent.ImportSuccess(result.importedCount))
+                SmsHistoryImportResult.PermissionDenied ->
+                    _events.emit(ConversationDetailEvent.ImportPermissionDenied)
+            }
+            isImporting = false
+        }
     }
 
     fun submitSuggestion() {

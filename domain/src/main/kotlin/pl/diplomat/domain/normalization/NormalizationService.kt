@@ -1,5 +1,7 @@
 package pl.diplomat.domain.normalization
 
+import pl.diplomat.domain.model.PhoneNumber
+
 class NormalizationService(
     private val registry: NormalizationStrategyRegistry,
 ) {
@@ -22,6 +24,13 @@ class NormalizationService(
             .with(NormalizationStrategyKeys.PHONE_BUILD_NORMALIZED)
             .with(NormalizationStrategyKeys.PHONE_MATCH_KEY_NATIONAL_9)
             .normalize(value)
+
+    fun phonesMatch(contactPhone: PhoneNumber, telephonyAddress: String): Boolean {
+        val contactKey = normalizePhone(contactPhone.value).matchKey
+        val addressKey = runCatching { normalizePhone(telephonyAddress.trim()).matchKey }.getOrNull()
+            ?: return false
+        return contactKey == addressKey
+    }
 
     companion object {
         val default: NormalizationService = NormalizationService(NormalizationStrategyRegistry.withDefaults())

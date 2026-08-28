@@ -92,4 +92,13 @@
     <string name="suggestion_submitting">Sending…</string>
     <string name="suggestion_failed">Request failed: %1$s</string>
     <string name="suggestion_result">Suggested answer</string>
+    <string name="history_import_title">SMS history</string>
+    <string name="history_import_date_label">Import from</string>
+    <string name="history_import_button">Re-import SMS history</string>
+    <string name="history_import_confirm_title">Re-import SMS history?</string>
+    <string name="history_import_confirm_body">Stored SMS/MMS for this contact will be deleted and replaced from your device since %1$s. WhatsApp messages are not affected.</string>
+    <string name="history_import_confirm">Re-import</string>
+    <string name="history_import_importing">Importing…</string>
+    <string name="history_import_success">Imported %1$d SMS/MMS messages</string>
+    <string name="history_import_pick_date">Pick date</string>
 </resources>
