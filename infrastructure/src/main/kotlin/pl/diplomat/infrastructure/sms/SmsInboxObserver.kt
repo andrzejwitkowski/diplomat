@@ -25,6 +25,7 @@ class SmsInboxObserver(
     private val process: suspend (RawIncomingMessage) -> ProcessIncomingMessageResult,
 ) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val sms = SmsTelephonyQueries(context.contentResolver)
     private val mms = MmsTelephonyQueries(context.contentResolver)
     private val syncMutex = Mutex()
     private var registered = false
@@ -45,7 +46,7 @@ class SmsInboxObserver(
         syncMutex.withLock {
             migrateCheckpointPrefs()
 
-            val snapshotSmsMaxId = queryMaxSmsId()
+            val snapshotSmsMaxId = sms.queryMaxId()
             if (snapshotSmsMaxId == null) {
                 DevLog.log("SMS", "max sms id query failed, will retry on next start")
                 return@withLock
@@ -104,7 +105,7 @@ class SmsInboxObserver(
     }
 
     private suspend fun backfillTodaySms(upToId: Long) {
-        val rows = querySmsSinceDate(todayStartMillis()).filter { it.id <= upToId }
+        val rows = sms.querySince(todayStartMillis()).filter { it.id <= upToId }
         var saved = 0
         for (row in rows) {
             if (SmsRowMapper.isPendingOutbound(row.type)) continue
@@ -143,7 +144,7 @@ class SmsInboxObserver(
 
     private suspend fun syncNewSms() {
         val afterId = lastSeenSmsId()
-        val rows = querySmsAfter(afterId)
+        val rows = sms.queryAfter(afterId)
         val pendingIds = mutableSetOf<Long>()
         for (row in rows) {
             if (SmsRowMapper.isPendingOutbound(row.type)) {
@@ -205,90 +206,12 @@ class SmsInboxObserver(
             .toInstant()
             .toEpochMilli()
 
-    private fun queryMaxSmsId(): Long? {
-        context.contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms._ID),
-            null,
-            null,
-            "${Telephony.Sms._ID} DESC",
-        )?.use { cursor ->
-            return if (cursor.moveToFirst()) cursor.getLong(0) else 0L
-        }
-        return null
-    }
-
-    private fun querySmsSinceDate(sinceMillis: Long): List<SmsRow> {
-        val rows = mutableListOf<SmsRow>()
-        context.contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            SMS_COLUMNS,
-            "${Telephony.Sms.DATE} >= ?",
-            arrayOf(sinceMillis.toString()),
-            "${Telephony.Sms._ID} ASC",
-        )?.use { cursor ->
-            rows.addAll(readSmsRows(cursor))
-        }
-        return rows
-    }
-
-    private fun querySmsAfter(afterId: Long): List<SmsRow> {
-        val rows = mutableListOf<SmsRow>()
-        context.contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            SMS_COLUMNS,
-            "${Telephony.Sms._ID} > ?",
-            arrayOf(afterId.toString()),
-            "${Telephony.Sms._ID} ASC",
-        )?.use { cursor ->
-            rows.addAll(readSmsRows(cursor))
-        }
-        return rows
-    }
-
-    private fun readSmsRows(cursor: android.database.Cursor): List<SmsRow> {
-        val idIdx = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
-        val addressIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-        val bodyIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
-        val dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
-        val typeIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-        val rows = mutableListOf<SmsRow>()
-        while (cursor.moveToNext()) {
-            rows.add(
-                SmsRow(
-                    id = cursor.getLong(idIdx),
-                    address = cursor.getString(addressIdx).orEmpty(),
-                    body = cursor.getString(bodyIdx).orEmpty(),
-                    date = cursor.getLong(dateIdx),
-                    type = cursor.getInt(typeIdx),
-                ),
-            )
-        }
-        return rows
-    }
-
-    private data class SmsRow(
-        val id: Long,
-        val address: String,
-        val body: String,
-        val date: Long,
-        val type: Int,
-    )
-
     companion object {
         private const val PREFS = "sms_sync"
         private const val KEY_LAST_SMS_ID = "last_seen_sms_id"
         private const val KEY_LAST_MMS_ID = "last_seen_mms_id"
         private const val KEY_LAST_ID_LEGACY = "last_seen_id"
         private const val KEY_BACKFILL_TODAY_DONE_LEGACY = "backfill_today_done"
-
-        private val SMS_COLUMNS = arrayOf(
-            Telephony.Sms._ID,
-            Telephony.Sms.ADDRESS,
-            Telephony.Sms.BODY,
-            Telephony.Sms.DATE,
-            Telephony.Sms.TYPE,
-        )
 
         internal fun advanceCheckpoint(
             rowIds: List<Long>,

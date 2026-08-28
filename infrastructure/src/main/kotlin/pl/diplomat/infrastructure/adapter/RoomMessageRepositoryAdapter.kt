@@ -2,6 +2,7 @@ package pl.diplomat.infrastructure.adapter
 
 import pl.diplomat.domain.model.ConversationThread
 import pl.diplomat.domain.model.IncomingMessage
+import pl.diplomat.domain.model.MessageSourceApp
 import pl.diplomat.domain.port.MessageRepositoryPort
 import pl.diplomat.infrastructure.persistence.IncomingMessageDao
 import pl.diplomat.infrastructure.persistence.WhitelistedContactDao
@@ -47,6 +48,10 @@ class RoomMessageRepositoryAdapter(
 
     override suspend fun markAllAsReadForContact(contactId: Long) {
         messageDao.markAllAsReadForContact(contactId)
+    }
+
+    override suspend fun deleteSmsForContact(contactId: Long) {
+        messageDao.deleteByContactIdAndSourceApp(contactId, MessageSourceApp.SMS.name)
     }
 
     companion object {

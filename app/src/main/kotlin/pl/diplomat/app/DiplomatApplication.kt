@@ -22,6 +22,7 @@ import pl.diplomat.infrastructure.llm.LlmSettingsViewModel
 import pl.diplomat.infrastructure.llm.SharedPrefsLlmSettingsStore
 import pl.diplomat.infrastructure.ota.OtaUpdateManager
 import pl.diplomat.infrastructure.ota.OtaUpdateViewModel
+import pl.diplomat.infrastructure.sms.SmsHistoryImporter
 import pl.diplomat.infrastructure.sms.SmsInboxObserver
 import pl.diplomat.infrastructure.persistence.DiplomatDatabase
 import pl.diplomat.infrastructure.persistence.MIGRATION_1_2
@@ -50,6 +51,7 @@ import pl.diplomat.usecase.GetWhitelistedContactsUseCase
 import pl.diplomat.usecase.ProcessIncomingMessageResult
 import pl.diplomat.usecase.ProcessIncomingMessageUseCase
 import pl.diplomat.usecase.RawIncomingMessage
+import pl.diplomat.usecase.ReimportContactSmsHistoryUseCase
 import pl.diplomat.usecase.RemoveContactFromWhitelistUseCase
 import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
 
@@ -153,6 +155,12 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
         val conversationRangeStore = InMemoryConversationRangeStore()
         val observeConversationRange = ObserveConversationRangeUseCase(conversationRangeStore)
         val updateConversationRange = UpdateConversationRangeUseCase(conversationRangeStore)
+        val smsHistoryImporter = SmsHistoryImporter(this, normalization, processIncomingMessage::invoke)
+        val reimportContactSmsHistory = ReimportContactSmsHistoryUseCase(
+            messageRepository = messageRepository,
+            conversationRangePort = conversationRangeStore,
+            smsHistoryImport = smsHistoryImporter,
+        )
 
         dashboardViewModel = DashboardViewModel(
             getActiveConversations = GetActiveConversationsUseCase(messageRepository),
@@ -175,6 +183,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
                 observeConversationRange = observeConversationRange,
                 updateConversationRange = updateConversationRange,
                 sendConversationToModel = sendConversationToModel,
+                reimportContactSmsHistory = reimportContactSmsHistory,
             )
         }
 
