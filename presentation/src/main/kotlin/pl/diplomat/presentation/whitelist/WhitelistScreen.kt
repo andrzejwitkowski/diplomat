@@ -1,5 +1,6 @@
 package pl.diplomat.presentation.whitelist
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.provider.ContactsContract
@@ -44,11 +45,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,9 +60,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.infrastructure.whitelist.EditorState
+import pl.diplomat.infrastructure.whitelist.WhitelistEvent
 import pl.diplomat.infrastructure.whitelist.WhitelistUiState
 import pl.diplomat.infrastructure.whitelist.WhitelistViewModel
+import pl.diplomat.infrastructure.sms.ReadSmsPermission
 import pl.diplomat.presentation.R
+import kotlinx.coroutines.flow.collectLatest
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +76,14 @@ fun WhitelistRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val importPermissionMessage = stringResource(R.string.read_sms_required)
+    var isReadSmsGranted by remember { mutableStateOf(ReadSmsPermission.isGranted(context)) }
+    val requestReadSms = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        isReadSmsGranted = granted
+    }
 
     val pickContactLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -91,9 +107,24 @@ fun WhitelistRoute(
         viewModel.clearMessage()
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.events.collectLatest { event ->
+            when (event) {
+                is WhitelistEvent.ImportSuccess -> {
+                    val message = context.getString(R.string.history_import_success, event.count)
+                    snackbarHostState.showSnackbar(message)
+                }
+                WhitelistEvent.ImportPermissionDenied ->
+                    snackbarHostState.showSnackbar(importPermissionMessage)
+            }
+        }
+    }
+
     WhitelistScreen(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
+        isReadSmsGranted = isReadSmsGranted,
+        importingContactId = viewModel.importingContactId,
         onBack = onBack,
         onAddClick = viewModel::openAddEditor,
         onEditClick = viewModel::openEditEditor,
@@ -108,6 +139,8 @@ fun WhitelistRoute(
             )
         },
         onPickAvatar = { pickImageLauncher.launch("image/*") },
+        onRequestReadSms = { requestReadSms.launch(Manifest.permission.READ_SMS) },
+        onImportHistory = viewModel::requestImport,
     )
 }
 
@@ -116,6 +149,8 @@ fun WhitelistRoute(
 fun WhitelistScreen(
     uiState: WhitelistUiState,
     snackbarHostState: SnackbarHostState,
+    isReadSmsGranted: Boolean,
+    importingContactId: Long?,
     onBack: () -> Unit,
     onAddClick: () -> Unit,
     onEditClick: (WhitelistedContact) -> Unit,
@@ -126,6 +161,8 @@ fun WhitelistScreen(
     onPhoneNumberChange: (String) -> Unit,
     onPickFromContacts: () -> Unit,
     onPickAvatar: () -> Unit,
+    onRequestReadSms: () -> Unit,
+    onImportHistory: (WhitelistedContact, LocalDate) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -197,8 +234,12 @@ fun WhitelistScreen(
                         items(uiState.contacts, key = { it.id }) { contact ->
                             ContactCard(
                                 contact = contact,
+                                isReadSmsGranted = isReadSmsGranted,
+                                isImporting = importingContactId == contact.id,
                                 onEdit = { onEditClick(contact) },
                                 onDelete = { onDeleteClick(contact.id) },
+                                onRequestReadSms = onRequestReadSms,
+                                onImportHistory = { date -> onImportHistory(contact, date) },
                             )
                         }
                     }
@@ -262,30 +303,44 @@ private fun ContactAvatar(
 @Composable
 private fun ContactCard(
     contact: WhitelistedContact,
+    isReadSmsGranted: Boolean,
+    isImporting: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onRequestReadSms: () -> Unit,
+    onImportHistory: (LocalDate) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ContactAvatar(avatarUri = contact.avatarUri, size = 48.dp)
-            Column(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(contact.phoneNumber.value, style = MaterialTheme.typography.bodyMedium)
+                ContactAvatar(avatarUri = contact.avatarUri, size = 48.dp)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
+                    Text(contact.phoneNumber.value, style = MaterialTheme.typography.bodyMedium)
+                }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_contact))
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_contact))
+                }
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_contact))
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_contact))
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                ContactSmsImportSection(
+                    isReadSmsGranted = isReadSmsGranted,
+                    isImporting = isImporting,
+                    onRequestReadSms = onRequestReadSms,
+                    onImportHistory = onImportHistory,
+                )
             }
         }
     }

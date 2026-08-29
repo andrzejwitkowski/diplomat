@@ -1,8 +1,5 @@
 package pl.diplomat.presentation.conversation
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,10 +45,8 @@ import pl.diplomat.infrastructure.conversation.ConversationDetailUiState
 import pl.diplomat.infrastructure.conversation.ConversationDetailViewModel
 import pl.diplomat.infrastructure.conversation.MarkMode
 import pl.diplomat.infrastructure.conversation.SuggestionOutcome
-import pl.diplomat.infrastructure.sms.ReadSmsPermission
 import pl.diplomat.presentation.R
 import kotlinx.coroutines.flow.collectLatest
-import java.time.LocalDate
 
 @Composable
 fun ConversationDetailRoute(
@@ -62,27 +56,13 @@ fun ConversationDetailRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
     val wrongChannelMessage = stringResource(R.string.conversation_mark_wrong_channel)
-    val importPermissionMessage = stringResource(R.string.read_sms_required)
-    var isReadSmsGranted by remember { mutableStateOf(ReadSmsPermission.isGranted(context)) }
-    val requestReadSms = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        isReadSmsGranted = granted
-    }
 
     LaunchedEffect(thread.contact.id, viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 ConversationDetailEvent.WrongChannel ->
                     snackbarHostState.showSnackbar(wrongChannelMessage)
-                is ConversationDetailEvent.ImportSuccess -> {
-                    val message = context.getString(R.string.history_import_success, event.count)
-                    snackbarHostState.showSnackbar(message)
-                }
-                ConversationDetailEvent.ImportPermissionDenied ->
-                    snackbarHostState.showSnackbar(importPermissionMessage)
             }
         }
     }
@@ -102,8 +82,6 @@ fun ConversationDetailRoute(
                 range = state.range,
                 markMode = state.markMode,
                 snackbarHostState = snackbarHostState,
-                isReadSmsGranted = isReadSmsGranted,
-                isImporting = viewModel.isImporting,
                 onBack = onBack,
                 onEnterMarkMode = viewModel::enterMarkMode,
                 onCancelMarkMode = viewModel::cancelMarkMode,
@@ -115,8 +93,6 @@ fun ConversationDetailRoute(
                 onSentimentSelect = viewModel::selectSentiment,
                 onDesiredAnswerChange = viewModel::updateDesiredAnswer,
                 onSubmitSuggestion = viewModel::submitSuggestion,
-                onRequestReadSms = { requestReadSms.launch(Manifest.permission.READ_SMS) },
-                onImportHistory = viewModel::requestImport,
                 sentiment = sentimentState,
                 desiredAnswer = viewModel.desiredAnswer,
                 isSubmitting = viewModel.isSubmitting,
@@ -134,8 +110,6 @@ fun ConversationDetailScreen(
     range: ConversationRange?,
     markMode: MarkMode,
     snackbarHostState: SnackbarHostState,
-    isReadSmsGranted: Boolean,
-    isImporting: Boolean,
     onBack: () -> Unit,
     onEnterMarkMode: () -> Unit,
     onCancelMarkMode: () -> Unit,
@@ -147,19 +121,22 @@ fun ConversationDetailScreen(
     onSentimentSelect: (Sentiment) -> Unit,
     onDesiredAnswerChange: (String) -> Unit,
     onSubmitSuggestion: () -> Unit,
-    onRequestReadSms: () -> Unit,
-    onImportHistory: (LocalDate) -> Unit,
     sentiment: Sentiment,
     desiredAnswer: String,
     isSubmitting: Boolean,
     lastOutcome: SuggestionOutcome,
 ) {
     val listState = rememberLazyListState()
+    val totalLazyItems = if (channelGroups.isEmpty()) {
+        2
+    } else {
+        channelGroups.sumOf { 1 + it.messages.size } + 1
+    }
     var didScrollToLatest by remember { mutableStateOf(false) }
 
-    LaunchedEffect(channelGroups) {
-        if (channelGroups.isNotEmpty() && !didScrollToLatest) {
-            listState.scrollToItem(latestMessageLazyIndex(channelGroups))
+    LaunchedEffect(totalLazyItems) {
+        if (!didScrollToLatest) {
+            listState.scrollToItem(totalLazyItems - 1)
             didScrollToLatest = true
         }
     }
@@ -223,27 +200,6 @@ fun ConversationDetailScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item(key = "history-import") {
-                HistoryImportSection(
-                    isReadSmsGranted = isReadSmsGranted,
-                    isImporting = isImporting,
-                    onRequestReadSms = onRequestReadSms,
-                    onImportHistory = onImportHistory,
-                )
-            }
-
-            item(key = "suggestion-composer") {
-                SuggestionComposer(
-                    sentiment = sentiment,
-                    onSentimentSelect = onSentimentSelect,
-                    desiredAnswer = desiredAnswer,
-                    onDesiredAnswerChange = onDesiredAnswerChange,
-                    onSubmit = onSubmitSuggestion,
-                    isSubmitting = isSubmitting,
-                    lastOutcome = lastOutcome,
-                )
-            }
-
             if (channelGroups.isEmpty()) {
                 item(key = "empty") {
                     Text(
@@ -277,14 +233,21 @@ fun ConversationDetailScreen(
                     }
                 }
             }
+
+            item(key = "suggestion-composer") {
+                SuggestionComposer(
+                    sentiment = sentiment,
+                    onSentimentSelect = onSentimentSelect,
+                    desiredAnswer = desiredAnswer,
+                    onDesiredAnswerChange = onDesiredAnswerChange,
+                    onSubmit = onSubmitSuggestion,
+                    isSubmitting = isSubmitting,
+                    lastOutcome = lastOutcome,
+                )
+            }
         }
     }
 }
-
-private const val CONTACT_SETUP_LAZY_ITEMS = 2
-
-private fun latestMessageLazyIndex(channelGroups: List<ChannelMessageGroup>): Int =
-    CONTACT_SETUP_LAZY_ITEMS + channelGroups.sumOf { 1 + it.messages.size } - 1
 
 @Composable
 private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {

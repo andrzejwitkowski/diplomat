@@ -41,7 +41,7 @@ internal fun SuggestionComposer(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp),
+            .padding(vertical = 8.dp),
     ) {
         Text(
             text = stringResource(R.string.suggestion_composer_title),

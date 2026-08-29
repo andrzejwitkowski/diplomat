@@ -183,7 +183,6 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
                 observeConversationRange = observeConversationRange,
                 updateConversationRange = updateConversationRange,
                 sendConversationToModel = sendConversationToModel,
-                reimportContactSmsHistory = reimportContactSmsHistory,
             )
         }
 
@@ -192,6 +191,7 @@ class DiplomatApplication : Application(), DiplomatServiceLocator {
             addContact = AddContactToWhitelistUseCase(contactRepository, normalization),
             updateContact = UpdateWhitelistedContactUseCase(contactRepository),
             removeContactFromWhitelist = RemoveContactFromWhitelistUseCase(contactRepository),
+            reimportContactSmsHistory = reimportContactSmsHistory,
             systemContacts = systemContacts,
             avatarStorage = avatarStorage,
             onWhitelistChanged = smsInboxObserver::resyncToday,
