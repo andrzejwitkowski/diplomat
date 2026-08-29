@@ -92,6 +92,9 @@
     <string name="suggestion_submitting">Sending…</string>
     <string name="suggestion_failed">Request failed: %1$s</string>
     <string name="suggestion_result">Suggested answer</string>
+    <string name="suggestion_copy">Copy suggested answer</string>
+    <string name="suggestion_copied">Copied to clipboard</string>
+    <string name="suggestion_regenerate">Regenerate answer</string>
     <string name="history_import_title">SMS history</string>
     <string name="history_import_date_label">Import from</string>
     <string name="history_import_button">Re-import SMS history</string>

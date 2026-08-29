@@ -1,10 +1,7 @@
 package pl.diplomat.presentation.dashboard
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
 import android.os.Build
 import android.os.Build.VERSION_CODES
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,6 +70,7 @@ import pl.diplomat.infrastructure.notification.NotificationListenerPermission
 import pl.diplomat.infrastructure.notification.PostNotificationsPermission
 import pl.diplomat.infrastructure.sms.ReadSmsPermission
 import pl.diplomat.presentation.R
+import pl.diplomat.presentation.copyPlainTextToClipboard
 import pl.diplomat.presentation.message.previewText
 import java.text.DateFormat
 import java.util.Date
@@ -354,11 +352,12 @@ private fun BuildInfoFooter(
 }
 
 private fun copyDebugLogsToClipboard(context: Context, buildInfo: AppBuildInfo) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(
-        ClipData.newPlainText("Diplomat debug logs", DevLog.dumpForExport(buildInfo)),
+    copyPlainTextToClipboard(
+        context,
+        "Diplomat debug logs",
+        DevLog.dumpForExport(buildInfo),
+        R.string.debug_logs_copied,
     )
-    Toast.makeText(context, context.getString(R.string.debug_logs_copied), Toast.LENGTH_SHORT).show()
 }
 
 @Composable
