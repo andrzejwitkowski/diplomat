@@ -1,17 +1,12 @@
 package pl.diplomat.presentation.conversation
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,20 +16,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -165,19 +155,11 @@ fun ConversationDetailScreen(
     lastOutcome: SuggestionOutcome,
 ) {
     val listState = rememberLazyListState()
-    val setupItemCount = 2
-    val messageItemCount = if (channelGroups.isEmpty()) {
-        1
-    } else {
-        channelGroups.sumOf { 1 + it.messages.size }
-    }
-    val totalLazyItems = setupItemCount + messageItemCount
-    val latestMessageIndex = totalLazyItems - 1
     var didScrollToLatest by remember { mutableStateOf(false) }
 
-    LaunchedEffect(totalLazyItems) {
+    LaunchedEffect(channelGroups) {
         if (channelGroups.isNotEmpty() && !didScrollToLatest) {
-            listState.scrollToItem(latestMessageIndex)
+            listState.scrollToItem(latestMessageLazyIndex(channelGroups))
             didScrollToLatest = true
         }
     }
@@ -299,121 +281,10 @@ fun ConversationDetailScreen(
     }
 }
 
-@Composable
-private fun SuggestionComposer(
-    sentiment: Sentiment,
-    onSentimentSelect: (Sentiment) -> Unit,
-    desiredAnswer: String,
-    onDesiredAnswerChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    isSubmitting: Boolean,
-    lastOutcome: SuggestionOutcome,
-) {
-    val context = LocalContext.current
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.suggestion_composer_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.primary,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
+private const val CONTACT_SETUP_LAZY_ITEMS = 2
 
-        Text(
-            text = stringResource(R.string.suggestion_sentiment_label),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-        SentimentSelector(
-            selected = sentiment,
-            onSelect = onSentimentSelect,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
-
-        TextField(
-            value = desiredAnswer,
-            onValueChange = onDesiredAnswerChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.suggestion_desired_answer)) },
-            minLines = 3,
-        )
-
-        Button(
-            onClick = onSubmit,
-            enabled = !isSubmitting,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text = if (isSubmitting) stringResource(R.string.suggestion_submitting)
-                else stringResource(R.string.suggestion_submit),
-            )
-        }
-
-        if (lastOutcome is SuggestionOutcome.Failure) {
-            Text(
-                text = stringResource(R.string.suggestion_failed, lastOutcome.message),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.error,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        } else if (lastOutcome is SuggestionOutcome.Success && lastOutcome.text.isNotBlank()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.suggestion_result),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.primary,
-                )
-                Row {
-                    IconButton(
-                        onClick = {
-                            copyTextToClipboard(
-                                context = context,
-                                label = context.getString(R.string.suggestion_result),
-                                text = lastOutcome.text,
-                            )
-                        },
-                    ) {
-                        Icon(
-                            Icons.Filled.ContentCopy,
-                            contentDescription = stringResource(R.string.suggestion_copy),
-                        )
-                    }
-                    IconButton(
-                        onClick = onSubmit,
-                        enabled = !isSubmitting,
-                    ) {
-                        Icon(
-                            Icons.Filled.Refresh,
-                            contentDescription = stringResource(R.string.suggestion_regenerate),
-                        )
-                    }
-                }
-            }
-            OutlinedTextField(
-                value = lastOutcome.text,
-                onValueChange = {},
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-            )
-        }
-    }
-}
-
-private fun copyTextToClipboard(context: Context, label: String, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(context, context.getString(R.string.suggestion_copied), Toast.LENGTH_SHORT).show()
-}
+private fun latestMessageLazyIndex(channelGroups: List<ChannelMessageGroup>): Int =
+    CONTACT_SETUP_LAZY_ITEMS + channelGroups.sumOf { 1 + it.messages.size } - 1
 
 @Composable
 private fun ChannelSectionHeader(sourceApp: MessageSourceApp) {
