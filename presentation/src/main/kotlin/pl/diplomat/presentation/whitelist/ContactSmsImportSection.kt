@@ -1,4 +1,4 @@
-package pl.diplomat.presentation.conversation
+package pl.diplomat.presentation.whitelist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -36,7 +36,7 @@ import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun HistoryImportSection(
+internal fun ContactSmsImportSection(
     isReadSmsGranted: Boolean,
     isImporting: Boolean,
     onRequestReadSms: () -> Unit,
@@ -117,7 +117,7 @@ internal fun HistoryImportSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
+            .padding(top = 12.dp),
     ) {
         Text(
             text = stringResource(R.string.history_import_title),

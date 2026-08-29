@@ -1,23 +1,31 @@
 package pl.diplomat.infrastructure.whitelist
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import pl.diplomat.domain.model.PhoneNumber
 import pl.diplomat.domain.model.WhitelistedContact
 import pl.diplomat.domain.port.AvatarStoragePort
+import pl.diplomat.domain.port.SmsHistoryImportResult
 import pl.diplomat.domain.port.SystemContactsPort
 import pl.diplomat.usecase.AddContactToWhitelistUseCase
 import pl.diplomat.usecase.GetWhitelistedContactsUseCase
+import pl.diplomat.usecase.ReimportContactSmsHistoryUseCase
 import pl.diplomat.usecase.RemoveContactFromWhitelistUseCase
 import pl.diplomat.usecase.UpdateWhitelistedContactUseCase
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 sealed interface WhitelistUiState {
     data object Loading : WhitelistUiState
@@ -28,6 +36,11 @@ sealed interface WhitelistUiState {
     ) : WhitelistUiState
 
     data class Error(val message: String) : WhitelistUiState
+}
+
+sealed interface WhitelistEvent {
+    data class ImportSuccess(val count: Int) : WhitelistEvent
+    data object ImportPermissionDenied : WhitelistEvent
 }
 
 data class EditorState(
@@ -42,6 +55,7 @@ class WhitelistViewModel(
     private val addContact: AddContactToWhitelistUseCase,
     private val updateContact: UpdateWhitelistedContactUseCase,
     private val removeContactFromWhitelist: RemoveContactFromWhitelistUseCase,
+    private val reimportContactSmsHistory: ReimportContactSmsHistoryUseCase,
     private val systemContacts: SystemContactsPort,
     private val avatarStorage: AvatarStoragePort,
     private val onWhitelistChanged: () -> Unit = {},
@@ -49,6 +63,12 @@ class WhitelistViewModel(
 
     private val editor = MutableStateFlow<EditorState?>(null)
     private val message = MutableStateFlow<String?>(null)
+    private val _events = MutableSharedFlow<WhitelistEvent>(extraBufferCapacity = 1)
+
+    var importingContactId by mutableStateOf<Long?>(null)
+        private set
+
+    val events = _events.asSharedFlow()
 
     val uiState: StateFlow<WhitelistUiState> = combine(
         getWhitelistedContacts(),
@@ -118,6 +138,20 @@ class WhitelistViewModel(
         viewModelScope.launch {
             runCatching { removeContactFromWhitelist(id) }
                 .onFailure { message.value = it.message ?: "Delete failed" }
+        }
+    }
+
+    fun requestImport(contact: WhitelistedContact, sinceDate: LocalDate) {
+        if (importingContactId != null) return
+        importingContactId = contact.id
+        viewModelScope.launch {
+            when (val result = reimportContactSmsHistory(contact, sinceDate)) {
+                is SmsHistoryImportResult.Success ->
+                    _events.emit(WhitelistEvent.ImportSuccess(result.importedCount))
+                SmsHistoryImportResult.PermissionDenied ->
+                    _events.emit(WhitelistEvent.ImportPermissionDenied)
+            }
+            importingContactId = null
         }
     }
 
