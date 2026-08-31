@@ -59,7 +59,7 @@ internal class MmsTelephonyQueries(
         return null
     }
 
-    fun queryText(mmsId: Long): String? {
+    fun queryContent(mmsId: Long): MmsPartsContent? {
         resolver.query(
             Uri.parse("content://mms/$mmsId/part"),
             arrayOf("ct", "text"),
@@ -70,13 +70,11 @@ internal class MmsTelephonyQueries(
             val ctIdx = cursor.getColumnIndex("ct")
             val textIdx = cursor.getColumnIndex("text")
             if (ctIdx < 0 || textIdx < 0) return null
-            val chunks = mutableListOf<String>()
+            val parts = mutableListOf<Pair<String, String?>>()
             while (cursor.moveToNext()) {
-                val contentType = cursor.getString(ctIdx).orEmpty()
-                if (!contentType.startsWith("text/", ignoreCase = true)) continue
-                cursor.getString(textIdx)?.trim()?.takeIf { it.isNotEmpty() }?.let { chunks.add(it) }
+                parts.add(cursor.getString(ctIdx).orEmpty() to cursor.getString(textIdx))
             }
-            return chunks.joinToString("\n").takeIf { it.isNotBlank() }
+            return MmsRowMapper.resolveParts(parts)
         }
         return null
     }
